@@ -1,0 +1,6 @@
+sphinx>=7.0
+sphinx-rtd-theme>=2.0
+sphinxcontrib-mermaid
+sphinx-design
+sphinx-copybutton
+sphinx-needs
