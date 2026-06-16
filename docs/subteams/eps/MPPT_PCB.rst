@@ -1,8 +1,6 @@
 MPPT PCB
 ========
 
-
-
 :Status: Draft
 :Project Lead: Jaron (23wbjx@queensu.ca)
 :Reviewers: Name, Name
@@ -10,11 +8,10 @@ MPPT PCB
 :Revision: v0.1
 
 Overview
-========
-
+--------
 
 Working Principle
-=================
+------------------
 
 A Maximum Power Point Tracker (MPPT) extracts the maximum possible
 power from a solar panel regardless of changing conditions like
@@ -57,10 +54,8 @@ cycle that lands the panel voltage at the MPP.
 For more detail, see the `Wikipedia article on MPPT
 <https://en.wikipedia.org/wiki/Maximum_power_point_tracking>`_.
 
-
-
 Scope & Assumptions
-====================
+--------------------
 
 What this document covers and explicitly does *not* cover. List any
 assumptions the design depends on (e.g. "assumes 3.3V regulated bus
@@ -68,7 +63,7 @@ supply provided by EPS") so readers from other subteams know what to
 verify before relying on this page.
 
 System Architecture
-====================
+--------------------
 
 Use a Mermaid diagram to show components, data/signal flow, hardware
 interfaces, or a state machine. Every project page should have at
@@ -83,7 +78,7 @@ least one diagram, even a simple block diagram.
        C -- Error --> E[Fault Handling]
 
 Interfaces
-==========
+----------
 
 Explicit list of every boundary this component crosses. This is the
 section other subteams will read first — be precise about connectors,
@@ -105,12 +100,11 @@ protocols, voltages, data rates, and units.
      - Data
      - [Baud rate, packet format reference]
 
-
 Hardware Detail
-==================
+----------------
 
 Schematic
----------
+~~~~~~~~~
 
 Embed or link the schematic (PDF/PNG export from your EDA tool, kept
 in the repo under ``_static/`` or a ``hardware/`` folder so it's
@@ -128,7 +122,7 @@ circuit, etc.). Link to the source schematic file (KiCad/Altium/Eagle
 project) in References.
 
 Power Budget
-------------
+~~~~~~~~~~~~
 
 .. list-table::
    :header-rows: 1
@@ -145,7 +139,7 @@ Power Budget
      - [Worst-case load condition]
 
 Component Selection
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 For any part chosen for a non-obvious reason (radiation tolerance,
 temperature rating, lead time, cost, footprint constraint), record the
@@ -166,7 +160,7 @@ replacement.
      - [Other parts evaluated and why rejected]
 
 Pinout / Connector Mapping
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :header-rows: 1
@@ -183,7 +177,7 @@ Pinout / Connector Mapping
      - [Max 500mA]
 
 Bill of Materials (BOM)
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Link to the maintained BOM file (spreadsheet or exported CSV) rather
 than duplicating it in prose — this should live as a version-controlled
@@ -193,7 +187,7 @@ file so it can be diffed across revisions.
 - BOM revision matching this document revision: [rev]
 
 Layout & Stackup
--------------------
+~~~~~~~~~~~~~~~~~
 
 Note layer count, key layout decisions (impedance-controlled traces,
 ground plane strategy, thermal relief, keep-out zones), and link to the
@@ -201,7 +195,7 @@ board outline/mechanical fit drawing if relevant to Mech subteam
 coordination.
 
 Bring-Up & Debug Procedure
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Step-by-step first-power-on procedure: what to check before applying
 power, what to measure first, expected nominal values, and known
@@ -215,7 +209,7 @@ Learned entries below where applicable).
 #. [Step]
 
 Errata
---------
+~~~~~~
 
 Known issues with the current board revision that are accepted/not yet
 fixed (distinct from Lessons Learned, which documents issues already
@@ -224,10 +218,10 @@ resolved). Update or remove entries as new revisions fix them.
 - [Issue] — affects revision [X] — [workaround if any]
 
 Traceability (V-Model)
-=======================
+------------------------
 
 Requirements
-------------
+~~~~~~~~~~~~
 
 Define the requirements this project must satisfy. Use Sphinx-Needs
 ``req`` blocks so these appear in the global traceability matrix.
@@ -239,7 +233,7 @@ Define the requirements this project must satisfy. Use Sphinx-Needs
    The subsystem shall [testable, measurable requirement statement].
 
 Design Specifications
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 Define the design that satisfies the requirement(s) above.
 
@@ -251,7 +245,7 @@ Define the design that satisfies the requirement(s) above.
    requirement.
 
 Test Cases & Verification
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Define how the specification is verified. Link results/evidence once
 testing occurs (test report, data file, photo of setup).
@@ -263,14 +257,14 @@ testing occurs (test report, data file, photo of setup).
    Describe the test procedure, conditions, and pass/fail criteria.
 
 Traceability Matrix
----------------------
+~~~~~~~~~~~~~~~~~~~~
 
 .. needtable::
    :filter: "[SUBTEAM]" in id
    :columns: id, title, type, satisfies, verifies
 
 Open Risks & TBDs
-===================
+--------------------
 
 Forward-looking. Known unknowns, untested edge cases, or design
 decisions still pending — distinct from Lessons Learned below, which
@@ -280,21 +274,21 @@ Lessons Learned).
 - [Risk/TBD item] — [owner] — [target resolution date]
 
 Lessons Learned Log
-======================
+----------------------
 
 Append-only. Add an entry at the end of every prototyping or testing
 phase. Never delete past entries — this is the institutional memory
 that prevents repeated mistakes across cohorts.
 
 [YYYY-MM-DD] (Issue #[N])
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :What Failed: [Observed problem]
 :Why It Failed: [Root cause]
 :Resolution: [Fix applied or follow-up action]
 
 References
-============
+-----------
 
 Datasheets, external standards, vendor docs, prior revisions of this
 page, or related pages in other subteams.
