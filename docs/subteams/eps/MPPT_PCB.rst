@@ -10,6 +10,25 @@ MPPT PCB
 Overview
 --------
 
+This document sets out to document every element of the Maximum Power Point Tracker (MPPT) and Power Distribution PCB. The point of this board is to safely obtain the maximum power from the solar panels, and convert it to several logic levels which other boards will use. It will also gather telermetry for the power being given to each board. It will include the following:
+
+- An explanation of MPPT
+- The Scope of this project
+- A system diagram explaining the high level workings
+- The boards that it will interface with
+- Key equirements made for this system, along with a link to all of them
+- A detailed explanation behind every page in the schematic
+- A Power Budget for the board
+- A detailed pinout
+- A link to the Bill of Materials
+- The Layout & Stackup chosen
+- And a deepdive into the layout and decisions made
+
+The goal for this is to have everything here so in a few years time, this can continue to be a useful resource for the team.
+
+For added clarity, on this Satellite, the EPS is split into two PCBs, a battery board and the MPPT/PDB.
+
+
 Working Principle
 ------------------
 
@@ -72,10 +91,69 @@ least one diagram, even a simple block diagram.
 .. mermaid::
 
    graph TD
-       A[Input] --> B(Processing)
-       B --> C{Decision}
-       C -- OK --> D[Output]
-       C -- Error --> E[Fault Handling]
+    %% Nodes Definitions
+    Solar[Solar Array]
+    MPPT["4 x MPPT (Buck Converter)"]
+    Batteries[Batteries]
+    PowerLines[Battery Board]
+    
+    BuckSolar["Local Buck Converter<br>(3.3V)"]
+    IdealDiode[Ideal Diode]
+    BuckExt1["Back to this board <br> 3V3 External Buck"]
+    BuckExt2["Back to this board <br> 5V External Buck"]
+
+    
+    STM32[STM32]
+    Watchdog[Watchdog]
+
+    OBC[OBC]
+    OBC_TEL[OBC Current 3V3]
+
+    ADCS[ADCS]
+    ADCS_TEL1[ADCS Current 3V3]
+    ADCS_TEL2[ADCS Current 5V]
+
+
+ 
+
+    %% Labels/Buses (represented as standard or shaped nodes for clarity)
+
+    %% Main Power Path (Top)
+    Solar --> MPPT
+    MPPT --> Batteries
+    Batteries --> PowerLines
+
+    %% Measurement / Feedback Inputs to STM32
+    %% STM32 Control Loop
+    Watchdog --> STM32
+
+    %% Power Supply to STM32 (Bottom)
+    
+    Batteries --> IdealDiode
+    Solar --> IdealDiode
+    IdealDiode --> BuckSolar
+    BuckSolar --> STM32
+    BuckSolar --> Watchdog
+
+
+    PowerLines --> BuckExt1
+    PowerLines --> BuckExt2
+    BuckExt1 --> OBC_TEL
+    BuckExt1 --> ADCS_TEL1
+    
+    BuckExt2 --> ADCS_TEL2
+    
+    
+    OBC_TEL --> OBC
+    ADCS_TEL1 -->ADCS
+    ADCS_TEL2 -->ADCS
+
+    Solar -.-> I_V_IN
+    I_V_IN --> STM32
+
+
+
+
 
 Interfaces
 ----------
