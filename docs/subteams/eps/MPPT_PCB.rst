@@ -69,7 +69,7 @@ Use a Mermaid diagram to show components, data/signal flow, hardware
 interfaces, or a state machine. Every project page should have at
 least one diagram, even a simple block diagram.
 
-.. code-block:: text
+.. mermaid::
 
    graph TD
        A[Input] --> B(Processing)
