@@ -334,3 +334,11 @@ footer {
         gap: 16px;
     }
 }
+
+/* Yellow background highlight class */
+.yellow-bg {
+    background-color: #ffff00 !important;
+    color: #000000 !important;
+    padding: 2px 4px;
+    border-radius: 3px;
+}

@@ -85,13 +85,7 @@ Here is a flow chart which captures the main logic of the PCB:
 
 .. mermaid::
 
-   %%{init: {
-   'theme': 'neutral',
-   'themeVariables': {
-   'background': '#ffffff',
-   'primaryColor': '#ffffff'
-   }
-   }}%%
+   %%{init: {"theme": "neutral", "themeVariables": {"background": "#ffffff", "primaryColor": "#ffffff"}}}%%
    graph TD
    %% Nodes Definitions
    Solar[Solar Array]
@@ -174,8 +168,7 @@ Interfaces
 Here is an explicit list of every boundary this PCB will cross. This is the
 main section for other subteams. It will allow you to know how this board will interface, if it is treated as a black box with inputs and outputs.
 
-.. role:: raw-html(raw)
-   :format: html
+.. role:: yellow-bg
 
 .. list-table::
    :header-rows: 1
@@ -187,7 +180,7 @@ main section for other subteams. It will allow you to know how this board will i
    * - Power input
      - EPS — 7.2V main batteryrail
      - Electrical
-     - :raw-html:`<span style="background-color: #ffff00;">Still need to decide on current limits and conection</span>`
+     - :yellow-bg:`Still need to decide on current limits and conection`
    * - CAN BUS x2 
      - OBC — CAN
      - Data
@@ -211,7 +204,7 @@ main section for other subteams. It will allow you to know how this board will i
    * - EPS Thermisters x4
      - EPS Battery Board
      - Analog 
-     - :raw-html:`<span style="background-color: #ffff00;">Still need to decide connector, to be placed next to battery</span>`
+     - :yellow-bg:`Still need to decide connector, to be placed next to battery`
 
 Hardware Detail
 ----------------
