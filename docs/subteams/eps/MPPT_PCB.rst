@@ -45,6 +45,10 @@ the Maximum Power Point (MPP), and its location shifts as sunlight and
 temperature change. An MPPT's job is to continuously find and sit at
 that peak.
 
+
+.. image:: /images/MPPT_Graph.png
+
+
 To do this, the panel is connected directly to a DC-DC converter
 (typically a buck converter) instead of directly to the battery. The
 buck converter's output voltage is set by its duty cycle:
