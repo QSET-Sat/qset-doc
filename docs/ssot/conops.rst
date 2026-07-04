@@ -19,7 +19,8 @@ Concept of Operations (CONOPS)
 .. image:: /images/CubeSats_1U_3U.png
    :align: center
    :alt: 1U and 3U CubeSat Form Factor Comparison
-
+   :scale: 30 %
+    
 1.2 Mission Overview
 --------------------
 QSET is aiming to launch on Reaction Dynamics' first or second launch into Low Earth Orbit (LEO). Reaction Dynamics is a relatively new startup aiming to launch the first satellites into orbit from Canada. This will be QSET's first launch, and likely the first satellite in space launched from Canadian soil. 
