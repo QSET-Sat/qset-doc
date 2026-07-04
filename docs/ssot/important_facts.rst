@@ -1,36 +1,21 @@
-============================
-CubeSat Mission Requirements 
-============================
+=====================================================
+System Requirements & Verification
+=====================================================
 
-.. choice:: Project Status
-   :field: Version: 0.1
-   :field: Date: July 2026
-   :field: Authors: Jaron
+.. choice:: Document Metadata
+   :field: Document ID: SYS-REQ-001
+   :field: Version: 1.0
+   :field: Last Updated: July 2026
 
-Executive Summary
-=================
+Overview
+========
 
-Provide a brief, high-level overview of the mission. What is the primary objective of the CubeSat? (e.g., "The OpenSat-1 mission aims to capture low-Earth orbit thermal imaging of wildfires...").
+This document establishes the official system-level requirements for the CubeSat mission. Every requirement listed here is binding and must be formally verified before the satellite is cleared for integration.
 
-1. Mission Levels & Constraints
-===============================
+.. important::
+   **The "Shall" Rule:** Requirements using the word **shall** are mandatory and require formal verification. Requirements using the word **should** are non-binding design goals.
 
-1.1 Programmatic Constraints
-----------------------------
-* **Launch Date:** Q4 2028-Q4 2030
-* **Form Factor:** 3U `CubeSat <https://en.wikipedia.org/wiki/CubeSat>`_ standard ($10 \times 10 \times 34\text{ cm}$)
-* **Target Orbit:** 400 km altitude, 45 degree inclanation
-
-.. image:: docs\images\CubeSats_1U_3U.png
-
-
-1.2 Operational Scenarios (CONOPS)
-----------------------------------
-Briefly list or link to the operational modes (Safe, Nominal, Science, Downlink) that the requirements must map to.
-
-
-1. System Requirements & Verification Matrix (SRVM)
-===================================================
+---
 
 .. note::
    **Verification Methods Key:**
@@ -40,90 +25,150 @@ Briefly list or link to the operational modes (Safe, Nominal, Science, Downlink)
    * **D (Demonstration):** Unmeasured operation showing a function works as intended.
    * **T (Test):** Physical measurement of performance using test equipment (TVAC, vibration table).
 
-2.1 Functional Requirements (FR)
---------------------------------
 
-.. list-table:: Functional Requirements Matrix
-   :widths: 15 45 15 25
+Requirements Summary Matrix
+===========================
+
+.. needlist::
+   :types: req
+   :columns: id, title, status, verification
+
+---
+
+Functional Requirements
+=======================
+
+.. req:: Mission Lifetime
+   :id: REQ_SYS_101
+   :status: Draft
+   :verification: Analysis
+
+   The satellite shall operate successfully in orbit for at least 12 months.
+
+.. req:: Communication Link
+   :id: REQ_SYS_102
+   :status: Draft
+   :verification: Test
+
+   The satellite shall establish contact with the ground station at least once every 24 hours.
+
+.. req:: Power Recovery
+   :id: REQ_SYS_104
+   :status: Draft
+   :verification: Test
+
+   The payload shall autonomously recover in the case of a dead battery pack
+
+
+.. req:: Power Mode Autonomy
+   :id: REQ_SYS_105
+   :status: Draft
+   :verification: Test
+
+   The flight software shall autonomously transition to Safe Mode if the battery pack drop below 6.5V.
+
+.. req:: Tether Deployment
+   :id: REQ_SYS_106
+   :status: Draft
+   :verification: Test, Analysis, Inspection
+
+   The Payload shall reliably deploy and not break when exposed to launch vibration conditions
+
+.. req:: CAN Bus
+   :id: REQ_SYS_107
+   :status: Draft
+   :verification: Test, Inspection
+
+   All MCU's chosen shall have the capabillity to have two individual CAN lines
+
+
+---
+
+Performance Requirements
+========================
+
+.. req:: Power Generation Margin
+   :id: REQ_SYS_201
+   :status: Draft
+   :verification: Analysis
+
+   The Electrical Power System (EPS) shall generate a minimum orbit-average power (OAP) of 5.5 W under worst-case beta angle conditions.
+
+.. req:: Communication Link Margin
+   :id: REQ_SYS_202
+   :status: Draft
+   :verification: Analysis
+
+   The radio communication links shall maintain a minimum link margin of +3 dB during nominal ground station passes.
+
+.. req:: GNSS
+   :id: REQ_SYS_203
+   :status: Draft
+   :verification: Analysis
+
+   The GNSS position of the Satillite should be refreshed once per second.
+
+.. req:: Payload Cathode
+   :id: REQ_SYS_204
+   :status: Draft
+   :verification: Test, Analysis, Inspection
+
+   The Payload shall operate at a voltage and current which allows for useage throughout the mission without degrading the cathode before the end of mission
+
+---
+
+Physical & Environmental Requirements
+=====================================
+
+.. req:: Mass Limit
+   :id: REQ_SYS_301
+   :status: Draft
+   :verification: Inspection, Test
+
+   The total satellite mass shall not exceed 3.0 kg.
+
+.. req:: Mechanical Envelope
+   :id: REQ_SYS_302
+   :status: Draft
+   :verification: Inspection
+
+   The integrated satellite dimensions shall comply with the standard 3U CubeSat profile ($100 \times 100 \times 340.5\text{ mm}$).
+
+.. req:: Launch Vibration Survival
+   :id: REQ_SYS_303
+   :status: Draft
+   :verification: Test
+
+   The satellite structural frame shall withstand random vibration profiles matching RXD's guide without structural deformation.
+
+.. req:: Component Temperature
+   :id: REQ_SYS_304
+   :status: Draft
+   :verification: Inspection
+
+    All components chosen for boards shall be rated for -40 - 85 degrees C 
+
+.. req:: Component Selection
+   :id: REQ_SYS_305
+   :status: Draft
+   :verification: Inspection
+
+    All components chosen for boards shall be rated AEC-Q at a minimum or have space heritage 
+
+---
+
+Document Control & Revisions
+===============================
+
+.. list-table:: Revision History
+   :widths: 15 15 45 25
    :header-rows: 1
 
-   * - Req ID
-     - Description
-     - Method
-     - Verification Success Criteria
-   * - SYS-FR-001
-     - The satellite shall fit within standard deployer rail constraints.
-     - I, M
-     - Physical dimensions must measure exactly within dispenser CAD envelope.
-   * - SYS-FR-002
-     - The satellite shall remain in an unpowered state until deployment switches open.
-     - T
-     - Deployer switches must cut off complete battery bus when depressed.
-   * - SYS-FR-003
-     - *[Insert New Functional Requirement]*
-     - 
-     - 
-
-2.2 Performance Requirements (PR)
----------------------------------
-
-.. list-table:: Performance Requirements Matrix
-   :widths: 15 45 15 25
-   :header-rows: 1
-
-   * - Req ID
-     - Description
-     - Method
-     - Verification Success Criteria
-   * - SYS-PR-001
-     - The EPS shall maintain battery cell temperatures above 0°C during eclipse.
-     - A, T
-     - Thermal vacuum test telemetry shows battery temperature $\ge 5^\circ\text{C}$.
-   * - SYS-PR-002
-     - The ADCS shall point the payload within 2.0 degrees of nadir during imaging.
-     - A
-     - Simulation log proves convergence within 1.5 degrees under orbital disturbances.
-   * - SYS-PR-003
-     - *[Insert New Performance Requirement]*
-     - 
-     - 
-
-
-3. Subsystem-Level Constraints
-==============================
-
-3.1 Mechanical & Structural (STRUCTURES)
-----------------------------------------
-* **Mass Target:** Maximum $4.0\text{ kg}$ total allocation.
-* **Natural Frequency:** Must be $> 100\text{ Hz}$ to avoid launch vehicle resonance.
-
-3.2 Electrical Power System (EPS)
-----------------------------------
-* **Battery Capacity:** Minimum $20\text{ Wh}$ usable capacity.
-* **Solar Generation:** Minimum average $6\text{ W}$ orbit-average power.
-
-3.3 Command & Data Handling (CDH) / Flight Software (FSW)
-----------------------------------------------------------
-* **Fault Tolerance:** FSW shall watchdogs reset processing units within $1.0\text{ s}$ of an SEU event loop stall.
-
-3.4 Communications (COMMS)
---------------------------
-* **Frequency Bands:** UHF/VHF Amateur or S-band allocations.
-* **Link Margin:** Minimum $+3\text{ dB}$ margin under worst-case atmospheric attenuation.
-
-
-4. Document Control & Revision History
-======================================
-
-.. list-table:: Revision Log
-   :widths: 15 15 40 30
-   :header-rows: 1
-
-   * - Revision
+   * - Version
      - Date
-     - Description of Changes
+     - Description
      - Author
    * - 0.1
      - 2026-07-04
-     - Initial draft structural skeleton.
+     - Migrated requirements architecture to custom Sphinx directives.
      - Jaron
