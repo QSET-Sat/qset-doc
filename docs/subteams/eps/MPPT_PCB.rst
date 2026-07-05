@@ -46,7 +46,7 @@ temperature change. An MPPT's job is to continuously find and sit at
 that peak.
 
 
-.. image:: /images/MPPT_Graph.png
+.. image:: ../../images/MPPT_Graph.png
 
 
 To do this, the panel is connected directly to a DC-DC converter
@@ -222,9 +222,9 @@ version-controlled alongside this page). Walk through the design by
 functional block, not net-by-net — power input, regulation, sensor
 interface, protection, etc.
 
-.. image:: /_static/[subteam]/[board_name]_schematic.png
-   :alt: [Board Name] schematic
-   :width: 100%
+.. .. image:: /_static/[subteam]/[board_name]_schematic.png
+..    :alt: [Board Name] schematic
+..    :width: 100%
 
 Briefly explain the purpose of each functional block and any
 non-obvious design choice (why this topology, why this protection

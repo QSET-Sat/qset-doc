@@ -2,10 +2,11 @@
 Interface Control Document (ICD)
 =====================================================
 
-.. choice:: Document Metadata
-   :field: Version: 0.1
-   :field: Last Updated: July 2026
-   :field: Status: Baseline
+.. dropdown:: Document Metadata
+
+   :Version: 0.1
+   :Last Updated: July 2026
+   :Status: Baseline
 
 1. Document Scope & Purpose
 ===========================

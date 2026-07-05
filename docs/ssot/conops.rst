@@ -2,10 +2,11 @@
 Concept of Operations (CONOPS)
 =====================================================
 
-.. choice:: Document Metadata
-   :field: Document ID: SYS-OPS-001
-   :field: Version: 1.0
-   :field: Last Updated: July 2026
+.. dropdown:: Document Metadata
+
+   :Document ID: SYS-OPS-001
+   :Version: 1.0
+   :Last Updated: July 2026
 
 1. Mission Architecture & Parameters
 ====================================
@@ -16,10 +17,10 @@ Concept of Operations (CONOPS)
 * **Form Factor:** 3U `CubeSat <https://en.wikipedia.org/wiki/CubeSat>`_ standard :math:`10 \times 10 \times 34\text{ cm}`.
 * **Target Orbit:** 400 km altitude, :math:`45^\circ` inclination
 
-.. image:: /images/CubeSats_1U_3U.png
+.. image:: ../images/CubeSats_1U_3U.png
    :align: center
    :alt: 1U and 3U CubeSat Form Factor Comparison
-   :scale: 30 %
+   :scale: 30
     
 1.2 Mission Overview
 --------------------
@@ -56,10 +57,10 @@ The mission aims to achieve both technical success and educational advancement:
 ----------------------------
 * **Space Segment:** The 3U CubeSat bus, integrated payloads, and deployable antenna systems.
 * **Ground Segment:** The university ground station tracking array, software-defined radio (SDR) terminal networks, and automated scheduling clients.
-* 
+
 ---
 
-2. Mission Lifecycles and Phases
+1. Mission Lifecycles and Phases
 ================================
 
 The mission lifecycle is broken into chronological phases tracking the satellite from development to disposal.

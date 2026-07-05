@@ -22,6 +22,16 @@ needs_types = [
     dict(directive="test", title="Test Case", prefix="TEST_", color="#DF744A", style="node"),
 ]
 
+needs_fields = {
+    "verification": {
+        "description": "Verification Method",
+        "schema": {
+            "type": "string",
+        },
+        "default": "",
+    }
+}
+
 needs_links = {
     "satisfies": {
         "incoming": "is satisfied by",

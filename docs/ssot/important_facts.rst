@@ -2,10 +2,11 @@
 System Requirements & Verification
 =====================================================
 
-.. choice:: Document Metadata
-   :field: Document ID: SYS-REQ-001
-   :field: Version: 1.0
-   :field: Last Updated: July 2026
+.. dropdown:: Document Metadata
+
+   :Document ID: SYS-REQ-001
+   :Version: 1.0
+   :Last Updated: July 2026
 
 Overview
 ========
@@ -29,7 +30,7 @@ This document establishes the official system-level requirements for the CubeSat
 Requirements Summary Matrix
 ===========================
 
-.. needlist::
+.. needtable::
    :types: req
    :columns: id, title, status, verification
 
@@ -133,6 +134,11 @@ Physical & Environmental Requirements
    :verification: Inspection
 
    The integrated satellite dimensions shall comply with the standard 3U CubeSat profile ($100 \times 100 \times 340.5\text{ mm}$).
+
+   .. image:: ../images/CubeSats_1U_3U.png
+      :align: center
+      :alt: 1U and 3U CubeSat Form Factor Comparison
+      :scale: 30
 
 .. req:: Launch Vibration Survival
    :id: REQ_SYS_303
