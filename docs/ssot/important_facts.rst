@@ -133,12 +133,7 @@ Physical & Environmental Requirements
    :status: Draft
    :verification: Inspection
 
-   The integrated satellite dimensions shall comply with the standard 3U CubeSat profile ($100 \times 100 \times 340.5\text{ mm}$).
-
-   .. image:: ../images/CubeSats_1U_3U.png
-      :align: center
-      :alt: 1U and 3U CubeSat Form Factor Comparison
-      :scale: 30
+   The integrated satellite dimensions shall comply with the standard 3U CubeSat profile :math:`10 \times 10 \times 34\text{ cm}`.
 
 .. req:: Launch Vibration Survival
    :id: REQ_SYS_303

@@ -13,6 +13,7 @@ extensions = [
     'sphinx_design',
     'sphinx_copybutton',
     'sphinx_needs',
+    'myst_parser',
 ]
 
 # -- Sphinx-Needs Configuration ----------------------------------------------

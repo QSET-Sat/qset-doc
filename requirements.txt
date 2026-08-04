@@ -4,3 +4,4 @@ sphinxcontrib-mermaid
 sphinx-design
 sphinx-copybutton
 sphinx-needs
+myst-parser
