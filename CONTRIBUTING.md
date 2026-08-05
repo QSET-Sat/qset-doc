@@ -13,6 +13,10 @@ To keep our knowledge structured and maintainable, our team follows a simple cor
 > **⚠️ IMPORTANT NOTE ON DOCUMENTATION STORAGE:**  
 > **Please no longer store important notes locally or in MS Teams! Historically, people have just sent messages to each other, leaving team members unable to find critical documents. Put your documentation in your GitHub repository, or if stored externally, always link to it directly in a GitHub Discussion or on the Sphinx site.**
 
+> **🔔 GETTING ATTENTION & STAYING UPDATED:**  
+> - **@ Mention Team Members:** If you want to get someone's attention for a decision, review, or question, **@mention them directly** in your GitHub Discussion post or PR comment (e.g., `@username`).  
+> - **Enable GitHub Notifications:** Every team member should **turn on notifications for this GitHub repository** (click **Watch** at the top right of the repo) and **check your notifications frequently** so discussions move forward without delays.
+
 ---
 
 ## Where Do I Start?

@@ -102,27 +102,20 @@ Nominal Mode (Idle/Science)
   * **Exit Criteria:** Automatic trigger via scheduled pass windows, or forced drop due to low battery safety thresholds.
 
 Downlink Mode
-  * **Description:** High-power RF transceivers active on beacon triggers over known geographical footprints.
-  * **Power Constraints:** Heavily constrained by the system power budget; limited to 10-minute automated windows per pass.
+  * **Description:** Omnidirectional S-Band antenna will take as musch power as it can for the breif pass time.
+  * **Power Constraints:** Heavily constrained by the system power budget; limited to a few minute automated windows per pass.
 
 ---
 
-4. Ground Segment Operations
+1. Ground Segment Operations
 ============================
 
-4.1 Ground Pass Strategy
+4.1 Ground Pass Strategy - Currently in progress developing
 ------------------------
-* **Pass Window Calculation:** Automated Two-Line Element (TLE) tracking updates pulled from orbital registries every 24 hours.
-* **Tracking Automation:** The university ground station tracking software automatically commands the Yagi/Parabolic antenna array once the satellite passes above 10 degrees elevation over the horizon.
-
-4.2 Data Handling and Distribution
-----------------------------------
-* **Raw Processing:** Decoded packet binaries are ingested directly into a secure central database.
-* **Parsing:** Ground servers unpack raw frames using schemas documented in the **ICD**, routing live metrics directly to the engineering subteam dashboard clients.
 
 ---
 
-5. Document Control & Revisions
+1. Document Control & Revisions
 ===============================
 
 .. list-table:: Revision History
