@@ -8,6 +8,9 @@ Welcome to the QSET team! Our documentation system keeps our design decisions tr
 
 To keep our knowledge structured and maintainable, our team follows a simple core philosophy: **Discussions are for evolving ideas, Sphinx is for settled decisions, and Pull Requests are for active implementation.** We use **GitHub Discussions** as our open forum for brainstorming, interface definitions, meeting minutes, and team announcements. Once a decision or design spec is finalized, it is documented in our **Sphinx site**, which serves as our official, versioned Single Source of Truth (SSOT) for subteam specs, hardware/software interfaces, style guides, and onboarding docs. Finally, **Pull Requests (PRs)** are used to propose, review, and merge active documentation changes into Sphinx.
 
+> **⚠️ IMPORTANT NOTE ON DOCUMENTATION STORAGE:**  
+> **Please no longer store important notes locally or in MS Teams! Historically, people have just sent messages to each other, leaving team members unable to find critical documents. Put your documentation in your GitHub repository, or if stored externally, always link to it directly in a GitHub Discussion or on the Sphinx site.**
+
 ---
 
 ## Where Do I Start?
