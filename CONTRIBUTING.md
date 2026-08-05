@@ -1,6 +1,8 @@
 # Contributing to the Design Documentation System
 
-This document is mirrored in the Getting Started & Onboarding section at [`docs/getting_started/CONTRIBUTING.md`](file:///c:/Users/Jaron/Downloads/QSET_Doc/docs/getting_started/CONTRIBUTING.md).
+> 🚀 **Looking for environment setup or the "First 24 Hours" onboarding guide?** Check out the [Getting Started Guide](docs/getting_started/contributing.rst).
+
+This document is mirrored in the Getting Started & Onboarding section at [`docs/getting_started/CONTRIBUTING.md`](docs/getting_started/CONTRIBUTING.md).
 
 Welcome to the QSET team! Our documentation system keeps our design decisions transparent, organized, and reliable. We manage our design knowledge using two primary tools working in tandem: **Sphinx site** and **GitHub Discussions**, with **Pull Requests (PRs)** managing active changes.
 

@@ -1,5 +1,7 @@
 # Contributing to the Design Documentation System
 
+> 🚀 **Looking for environment setup or the "First 24 Hours" onboarding guide?** Head over to the [Getting Started Guide](contributing.rst).
+
 Welcome to the QSET team! Our documentation system keeps our design decisions transparent, organized, and reliable. We manage our design knowledge using two primary tools working in tandem: **Sphinx site** and **GitHub Discussions**, with **Pull Requests (PRs)** managing active changes.
 
 ---
