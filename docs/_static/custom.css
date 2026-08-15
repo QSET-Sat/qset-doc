@@ -342,3 +342,119 @@ footer {
     padding: 2px 4px;
     border-radius: 3px;
 }
+
+/* ===== PC104 Pinout and Bus Tables Styling ===== */
+.pc104-table-wrapper {
+    overflow-x: auto;
+    margin: 20px 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.pc104-grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 780px;
+    margin: 0 !important;
+}
+
+.pc104-grid-table th,
+.pc104-grid-table td {
+    padding: 6px 3px !important;
+    border: 1px solid #cbd5e1 !important;
+    min-width: 26px;
+    height: 28px;
+    box-sizing: border-box;
+    transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+.pc104-grid-table td:hover {
+    filter: brightness(0.9);
+    cursor: default;
+}
+
+.pc104-grid-table .header-label {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 13px;
+    width: 40px;
+    border-right: 2px solid #94a3b8 !important;
+}
+
+.pc104-grid-table .header-sep {
+    border-top: 3px double #64748b !important;
+}
+
+/* Signal Badges & Colors */
+.badge-can { background-color: #8BAE62 !important; color: #ffffff !important; }
+.badge-uart-dark { background-color: #3F4E8B !important; color: #ffffff !important; }
+.badge-spi { background-color: #D9A1A0 !important; color: #3b1616 !important; }
+.badge-uart-blue { background-color: #5D7BB0 !important; color: #ffffff !important; }
+.badge-i2c-yellow { background-color: #F9EE54 !important; color: #1e293b !important; }
+.badge-i2c-purple { background-color: #544F81 !important; color: #ffffff !important; }
+.badge-gnd { background-color: #000000 !important; color: #ffffff !important; }
+.badge-vbat-gold { background-color: #DDA032 !important; color: #1e293b !important; }
+.badge-vbat-brown { background-color: #BC692B !important; color: #ffffff !important; }
+.badge-vbat-obc { background-color: #E67E22 !important; color: #ffffff !important; }
+.badge-vbat-sband { background-color: #D35400 !important; color: #ffffff !important; }
+.badge-vbat-payload { background-color: #C0392B !important; color: #ffffff !important; }
+.badge-vbat-comms { background-color: #8E44AD !important; color: #ffffff !important; }
+.badge-vbat-mppt { background-color: #2980B9 !important; color: #ffffff !important; }
+.badge-rail-3v3-batt { background-color: #27AE60 !important; color: #ffffff !important; }
+.badge-rail-3v3-adcs { background-color: #16A085 !important; color: #ffffff !important; }
+.badge-rail-3v3-obc { background-color: #1ABC9C !important; color: #ffffff !important; }
+.badge-rail-5v-adcs { background-color: #F1C40F !important; color: #1e293b !important; }
+.badge-health { background-color: #00A8FF !important; color: #ffffff !important; }
+.badge-mppt-health { background-color: #00D2D3 !important; color: #1e293b !important; }
+
+/* Inline Legend Pills */
+.pc104-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 24px 0;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.pc104-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #334155;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.pc104-legend-color {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.pin-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.check-green {
+    color: #27ae60;
+    font-weight: bold;
+    font-size: 14px;
+}
