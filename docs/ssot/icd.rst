@@ -34,7 +34,80 @@ All internal subsystem printed circuit boards (PCBs) must comply with the standa
 
 
 
-2.2 Payload Mechanical Clearance Envelope
+2.2 Spacecraft Internal Stackup & Slot Allocation
+-------------------------------------------------
+The 3U CubeSat chassis is structured into a dedicated **Top 1U Payload Bay** (+Z face) and a **2U Subsystem Bus Stack** housing the internal PC104 electronics stack.
+
+From top to bottom (+Z to -Z along the spacecraft structural rails), the physical stackup is arranged as follows:
+
+.. mermaid::
+
+   graph TD
+       subgraph Spacecraft ["3U CubeSat Stackup (+Z to -Z)"]
+           direction TB
+           P1["🚀 <b>Top 1U (+Z): Payload Assembly</b><br/><i>Tether Spool, Deployment Mechanism & Cathode</i>"]
+           
+           subgraph Bus ["2U PC104 Subsystem Stack"]
+               direction TB
+               S1["💻 <b>Slot 1: OBC</b> (On-Board Computer)"]
+               S2["🧭 <b>Slot 2: ADCS</b> (Attitude Determination & Control)"]
+               S3["🔋 <b>Slot 3: Battery Board</b> (2S BMS & Pack)"]
+               S4["⚡ <b>Slot 4: MPPT Board</b> (Solar Power Harvesting)"]
+               S5["📡 <b>Slot 5: COMMS</b> (UHF / S-Band Transceiver)"]
+               S6["🔬 <b>Slot 6: Payload Controller</b> (Instrument Interface)"]
+               
+               S1 --- S2 --- S3 --- S4 --- S5 --- S6
+           end
+           
+           P1 --- S1
+       end
+
+.. list-table:: 3U Spacecraft Subsystem Stackup (+Z to -Z)
+   :widths: 12 16 24 33 15
+   :header-rows: 1
+
+   * - Position
+     - Unit / Section
+     - Subsystem Board
+     - Description & Hardware
+     - Interfaces
+   * - **Bay 1**
+     - Top 1U (+Z)
+     - **Payload Assembly**
+     - Electrodynamic tether deployer, spool mechanism, and plasma cathode
+     - Deployment sense, HV harness
+   * - **Slot 1**
+     - Bus 2U
+     - **OBC**
+     - Central flight computer (MCU / FPGA), data logging, master clock
+     - PC104 (H1/H2), UART, CAN, SPI
+   * - **Slot 2**
+     - Bus 2U
+     - **ADCS**
+     - Attitude determination, magnetorquer & reaction wheel drive
+     - PC104 (H1/H2), I2C, CAN, 3V3/5V
+   * - **Slot 3**
+     - Bus 2U
+     - **Battery Board (BATT)**
+     - 2S Li-ion battery pack, cell monitoring & BMS protection
+     - PC104 (H1/H2), I2C, VBAT, 3V3_BATT
+   * - **Slot 4**
+     - Bus 2U
+     - **MPPT**
+     - Solar power conversion, charge control, EPS power conditioning
+     - PC104 (H1/H2), PV harness, VBAT
+   * - **Slot 5**
+     - Bus 2U
+     - **COMMS**
+     - UHF / S-Band transceiver, power amplifier, RF filtering
+     - PC104 (H1/H2), VBAT, RF Feedline
+   * - **Slot 6**
+     - Bottom (-Z)
+     - **Payload Controller**
+     - Science instrument interface, tether current acquisition, PL telemetry
+     - PC104 (H1/H2), VBAT, PL harness
+
+2.3 Payload Mechanical Clearance Envelope
 ------------------------------------------
 The payload subsystem occupies the top U of the stack. It must maintain a minimum clear buffer distance of **5.0 mm** from the internal deployment switch rails on the +Z face of the chassis to prevent mechanical interference with launcher deployment tabs.
 
