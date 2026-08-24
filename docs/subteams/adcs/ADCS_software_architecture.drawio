@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" pages="7">
   <diagram name="System Context" id="gMRS-2YhCNnsTt9ApXrA">
-    <mxGraphModel dx="1414" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="964" dy="534" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -32,7 +32,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="5t0p1DGvLlKD41NMGsw9-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;iMTQ board&lt;/h2&gt;&lt;div&gt;magnetorquer board&lt;/div&gt;" vertex="1">
+        <mxCell id="5t0p1DGvLlKD41NMGsw9-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;MTQ board&lt;/h2&gt;&lt;div&gt;magnetorquer board&lt;/div&gt;" vertex="1">
           <mxGeometry height="90" width="140" x="190" y="532" as="geometry" />
         </mxCell>
         <mxCell id="5t0p1DGvLlKD41NMGsw9-10" edge="1" parent="1" source="5t0p1DGvLlKD41NMGsw9-7" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" target="5t0p1DGvLlKD41NMGsw9-2" value="">
@@ -71,7 +71,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="Software architecture" id="MQSFcXwA3KHeRlQaQ9Hh">
-    <mxGraphModel dx="1414" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="964" dy="534" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -114,7 +114,7 @@
         <mxCell id="Cxi1u_OriPInhKfezqqb-10" parent="1" style="whiteSpace=wrap;html=1;labelBackgroundColor=none;perimeterSpacing=0;strokeWidth=2;" value="&lt;h2&gt;IMU driver&lt;/h2&gt;&lt;div&gt;I2C / SPI&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="110" x="160" y="397" as="geometry" />
         </mxCell>
-        <mxCell id="Cxi1u_OriPInhKfezqqb-11" parent="1" style="whiteSpace=wrap;html=1;labelBackgroundColor=none;perimeterSpacing=0;strokeWidth=2;" value="&lt;h2&gt;Mag. driver&lt;/h2&gt;&lt;div&gt;I2C&lt;/div&gt;" vertex="1">
+        <mxCell id="Cxi1u_OriPInhKfezqqb-11" parent="1" style="whiteSpace=wrap;html=1;labelBackgroundColor=none;perimeterSpacing=0;strokeWidth=2;" value="&lt;h2&gt;MTQ driver&lt;/h2&gt;&lt;div&gt;I2C&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="110" x="290" y="397" as="geometry" />
         </mxCell>
         <mxCell id="Cxi1u_OriPInhKfezqqb-12" parent="1" style="whiteSpace=wrap;html=1;labelBackgroundColor=none;perimeterSpacing=0;strokeWidth=2;" value="&lt;h2&gt;Sun sensor driver&lt;/h2&gt;&lt;div&gt;ADC&lt;/div&gt;" vertex="1">
@@ -151,7 +151,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="tTwmtXnBrPsV_3axw-AV" name="Data flow">
-    <mxGraphModel dx="1414" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1071" dy="593" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -235,7 +235,7 @@
         <mxCell id="vcIpbtkDnTLadQpUqpdg-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;CAN RX&lt;/h2&gt;&lt;div&gt;Mode CMD from OBC&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="140" x="665" y="90" as="geometry" />
         </mxCell>
-        <mxCell id="vcIpbtkDnTLadQpUqpdg-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;iMTQ driver&lt;/h2&gt;&lt;div&gt;PWM command&lt;/div&gt;" vertex="1">
+        <mxCell id="vcIpbtkDnTLadQpUqpdg-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;MTQ driver&lt;/h2&gt;&lt;div&gt;PWM command&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="140" x="665" y="320" as="geometry" />
         </mxCell>
       </root>
@@ -552,7 +552,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="YJMd4FdZ1oxG-w_wYvGW" name="Hardware-software interface">
-    <mxGraphModel dx="1414" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1134" dy="628" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -729,7 +729,7 @@
         <mxCell id="vHnDoD-RooC9cJKy0WW6-34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;h2&gt;Sun Sensors&lt;/h2&gt;" vertex="1">
           <mxGeometry height="60" width="140" x="100" y="250" as="geometry" />
         </mxCell>
-        <mxCell id="vHnDoD-RooC9cJKy0WW6-35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;h2&gt;iMTQ board&lt;/h2&gt;" vertex="1">
+        <mxCell id="vHnDoD-RooC9cJKy0WW6-35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;h2&gt;MTQ board&lt;/h2&gt;" vertex="1">
           <mxGeometry height="60" width="140" x="100" y="330" as="geometry" />
         </mxCell>
         <mxCell id="vHnDoD-RooC9cJKy0WW6-36" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;h2&gt;MRAM&lt;/h2&gt;" vertex="1">
