@@ -1,6 +1,6 @@
 # Space-School
 
-This repository contains the content for the 2022/2023 Space School year. Space School is created entirely by QSET members for QSET members.
+This repository contains the content for the 2026/2027 Space School year. Space School is created entirely by QSET members for QSET members.
 
 ## Goal
 
@@ -49,15 +49,8 @@ The week numbers correspond to the weeks of the school semester.
 
 **Semester Two - Winter**
 
-- Week 1, Lab 9: Intro to ACDS and EPS subsystems. Start designing your circuit (research sensor requirements, voltage from battery, etc.).
-- Week 2, Lab 10: Circuit design.
-- Week 3, Lab 10: Code.
-- Week 4, Lab 11: Code.
-- Week 5, Lab 11: Intro to Mech and Comms. Start CAD structure.
-- Week 6, Lab 11: Integration.
-- Winter Reading Week.
-- Week 7, Lab 12: Integration.
-- Remainder of the semester will be spent integrating all members onto a sub-team of their choice. Might add a lesson on job and internship opportunities in space.
+- Weeks 1-7: Working on ToastSats to be launched!
+- The remainder of the semester will be spent integrating all members into a sub-team of their choice
 
 ## Feedback
 
