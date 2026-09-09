@@ -35,17 +35,17 @@ The week numbers correspond to the weeks of the school semester.
 
 **Semester One - Fall**
 
-- Week 3, Lab 1: Meet Space School members and intro to Arduinos.
-- Week 4, Lab 2: Arduinos, sensors, and GitHub.
-- Week 5, Lab 3: Finish temperature sensor lab and make sure Git and GitHub are working.
+- Week 3: Meet Space School members and introduce Arduino.
+- Week 4, Lab 1: Blinky LED
+- Week 5, Lab 2: TMP 36 Sensor
 - Fall Reading Week.
-- Week 6, Lab 4: Soldering.
-- Week 7, Lab 4: Make-up lab (soldering, etc.).
-- Week 8, Lab 5: TOASTSAT PROJECTS BEGIN. Pick teams and discuss satellite missions.
-- Week 9, Lab 6: Continue to learn about the ToastSat project, launch, and sensors for missions. Form groups. (Git workshop, highly recommended for those new to git).
-- Week 10, Lab 7: Talk about OBC and Payload subsystems. Learn how we store data. (Python workshop).
-- Week 11, Lab 8: Intro to satellite budgets. Decide on what mission and sensors your team will use. Start learning how to work with the sensor. (SolidWorks workshop, important!).
-- Week 12: optional work session (no lab for last week of class).
+- Week 6, Lab 3: SD Card Reader
+- Week 7, Lab 4: Soldering
+- Week 8, Lab 5: CAD Modelling
+- Week 9, Lab 6: PCB Design
+- Week 10: Intro to satellite missions
+- Week 11: Finalize teams and decide on what mission and sensors your team will use
+- Week 12: Finalize sensors and missions. Optional work session
 
 **Semester Two - Winter**
 
