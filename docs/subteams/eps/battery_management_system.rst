@@ -1,3 +1,279 @@
+EPS Battery Board — Quick Start Guide
+======================================
+
+:Purpose: A fast, plain-language orientation to the Battery Board for anyone new to the
+          design. Each section below maps to a subsystem in the full design document
+          (``Battery Board.rst``) — read that document for derivations, part numbers, and
+          open risks; read this one to understand how the pieces fit together.
+:Companion board: MPPT/Power Distribution Board (handles charging; not covered here).
+:Status: Draft, mirrors design doc revision v0.3 (2026-09-08).
+
+.. contents:: Table of Contents
+   :depth: 2
+   :local:
+
+----
+
+The Big Picture
+----------------
+
+The Battery Board is one of two boards that make up the satellite's Electrical Power
+System (EPS). Its job is narrow and safety-critical: **store energy in the battery pack,
+protect it from every failure mode that could damage it or the spacecraft, and deliver
+protected raw battery voltage onto the PC104 bus for the rest of the satellite to use.**
+
+It does *not* charge the battery — that happens on the companion MPPT board — and it no
+longer does power conditioning (that moved to MPPT/PDB too, as of 2026-08-19). Everything
+on this board is either about **keeping the battery safe** or **getting power out safely**.
+
+A useful mental model is a chain of five jobs, each handled by a distinct subsystem,
+sitting between the battery cells and the rest of the satellite:
+
+
+----
+
+1. The Battery Pack
+---------------------
+
+**What it is:** 8 NCR18650GA Li-Ion cells arranged as **2S4P** — two cells in series (for
+~7.2 V nominal / 8.4 V full-charge bus voltage), four in parallel per series position (for
+capacity and discharge current).
+
+**Why split into two strings:** The pack is actually built as **two independent 2S2P
+strings** ("Pack A" and "Pack B"), each with its own protection IC, rather than one big
+2S4P block. This gives real-time A-vs-B telemetry comparison for fault detection, means no
+single point of failure takes down the whole pack, and halves the current (and therefore
+the heat) each string's switching FETs have to handle.
+
+**Read more:** ``Battery Configuration`` section of the full document.
+
+----
+
+2. Cell Protection & Balancing — BQ28Z610
+--------------------------------------------
+
+**What it is:** Two **BQ28Z610** ICs, one per 2S2P string. Each one is a dedicated 2-series
+Li-Ion protection and fuel-gauge chip.
+
+**What it does:**
+
+- Watches every cell for over/under-voltage, over/under-current, and over-temperature, and
+  can disable that string's charge/discharge path if a threshold is crossed.
+- Passively balances the two series cell groups (bleeds excess charge as heat).
+- Reports voltage, current, temperature, state-of-charge, and fault flags to the MCU over
+  I2C (one bus per IC, since both share the same fixed I2C address).
+
+**Why not simpler stacked single-cell ICs:** An earlier design stacked four single-series
+protection ICs instead. That was abandoned because if the bottom IC's FET opens, the IC
+above it loses its ground reference entirely and its readings become meaningless — a
+correctness problem, not just a nice-to-have. The 2S IC design avoids this by construction.
+
+**Read more:** ``IC Reference → Cell-Level Protection — BQ28Z610``.
+
+----
+
+3. Ideal-Diode OR-ing — LM74800-Q1
+-------------------------------------
+
+**What it is:** Two **LM74800-Q1** ideal-diode controllers, one at the output of each
+2S2P string, each driving a pair of back-to-back MOSFETs.
+
+**What it does:** Lets the two strings' outputs be safely tied together (OR-ed) even when
+they're at slightly different voltages, without one string back-feeding current into the
+other. It also doubles as the board's high-side power switch — pulling its ``EN/UVLO`` pin
+low disconnects that string's output entirely.
+
+**Why high-side, not low-side (ground):** Keeping the switching element out of the ground
+path means every board shares one continuous, undisturbed ground plane — important for
+clean I2C signaling and to avoid stray return currents finding their way onto data lines.
+
+**Read more:** ``Ideal Diodes — LM74800-Q1``.
+
+----
+
+4. Pack-Level Fusing
+----------------------
+
+**What it is:** One non-resettable time-lag ceramic fuse per 2S2P pack (30 A rated),
+sitting right at each pack's positive output header. This replaced an earlier per-cell
+PPTC (resettable, self-heating) fuse scheme.
+
+**What it does:** It's the fuse of last resort — a purely passive backstop against a hard
+short (e.g., stray debris bridging terminals) that doesn't depend on any active circuit
+surviving a radiation event to work.
+
+**Why the two packs' fuses are deliberately different:** Pack A uses a fuse with lower
+melting energy than Pack B's. If an ideal diode fails and the two packs start fighting each
+other, you want *one* fuse to clear quickly and the *other* to survive and keep the bus
+alive — identical fuses could clear together and lose both strings at once.
+
+**Read more:** ``Pack-Level Fusing``.
+
+----
+
+5. E-Fuse Power Distribution — the Heart of the Output Path
+----------------------------------------------------------------
+
+**What it is:** Two quad-channel programmable e-Fuse ICs (**TPS7H2140-SEP** for flight,
+substituted with the pin-compatible automotive-grade **TPS4H160-Q1** for the first
+prototype run on cost grounds), giving **8 channels total**.
+
+**What it does:** Each of the satellite's five downstream consumers of raw battery voltage
+— **COMMS, S-band, OBC, Payload, and the MPPT board itself** — gets its own independently
+current-limited, independently fault-monitored rail. Channels are *allocated by current
+need*, not one-per-rail:
+
+.. list-table:: Rail Allocation at a Glance
+   :header-rows: 1
+
+   * - Rail
+     - Channels
+     - Trip Current
+   * - Payload
+     - 3
+     - ~4.05–4.20 A
+   * - MPPT
+     - 2
+     - ~2.7–2.8 A
+   * - OBC
+     - 1
+     - ~1.4 A
+   * - S-band
+     - 1
+     - ~1.4 A
+   * - COMMS
+     - 1
+     - ~1.4 A
+
+**Why two e-Fuse ICs, not one:** A single quad-channel part can only cover four rails. A
+fifth consumer (MPPT's own ~2–3 A draw) was identified after the four-rail design was
+already locked in, so a second e-Fuse instance was added rather than trying to squeeze five
+rails out of four channels.
+
+**Also does:** Serves as the satellite's mandatory high-side launch inhibit (``EN`` gated
+by the deployment/watchdog timers), and absorbs the role of a formerly separate high-side
+inhibit IC that has since been removed.
+
+**Read more:** ``E-Fuse — TPS7H2140-SEP / TPS4H160-Q1`` and ``Channel Topology``.
+
+----
+
+6. Fault Handling in Firmware
+--------------------------------
+
+**What it is:** A firmware state machine, not a hardware feature — the e-Fuse ICs have no
+built-in auto-retry.
+
+**What it does, in plain terms:** If any rail's ``/FAULT`` line trips, firmware's first move
+is to kill *every* rail immediately (fast, safe, but blunt), then walk through all five
+rails one at a time, turning each back on briefly to see whether it's actually the faulted
+one. The one that's still short-circuited gets held off for a 5-second cooldown; the other
+four come back up. This trades a brief total blackout for a simple, fast interrupt handler.
+
+**Read more:** ``E-Fuse Fault Handling (Firmware)``.
+
+----
+
+7. Low-Side Inhibit — Launch Safety
+--------------------------------------
+
+**What it is:** An 8-MOSFET redundant array (**BUK9Y4R8-60E,115**) sitting in the battery's
+*ground* return path, driven through a capacitively-isolated gate driver
+(**TPSI3050-Q1**).
+
+**What it does:** This is a separate, independent safety switch from the e-Fuse's high-side
+inhibit — required so that nothing on the satellite can draw power during launch, even if
+the high-side path somehow failed on. It only closes once the deployment timer says
+deployment is complete.
+
+**Why 8 transistors:** Radiation-induced MOSFET failures are usually *short* failures. Two
+series pairs, doubled into two parallel branches, mean a single transistor failing short
+doesn't defeat the isolation, and a single one failing open doesn't cut off the current
+path either — at the cost of slightly higher combined resistance.
+
+**Read more:** ``Low-Side Inhibit — 8× BUK9Y4R8-60E,115``.
+
+----
+
+8. The MCU and Its Support Circuits
+---------------------------------------
+
+**What it is:** An **STM32U3B5CIT6** (Cortex-M33), replacing two earlier MCUs in
+succession — first for a second I2C peripheral (needed once two BQ28Z610s shared one I2C
+address), then for dual native CAN FD (needed once OBC required a redundant CAN
+architecture the earlier parts couldn't provide at all).
+
+**Supporting circuits on this board:**
+
+- **16 MHz crystal** (NDK NX3225SA) — clock reference, chosen for its wide temperature
+  rating and small, low-outgassing package.
+- **TPS3823-25DBVR supervisor** — resets the MCU on brownout or watchdog timeout,
+  independent of firmware; backed by an AC-coupled reset network so a *stuck* supervisor
+  can't hold the MCU in reset forever.
+- **Two TCAN334GDCNT CAN transceivers** — one per FDCAN peripheral, for the primary and
+  redundant telemetry bus to OBC.
+
+**Read more:** ``Microcontroller — STM32U3B5CIT6`` and its sub-sections.
+
+----
+
+9. Talking to OBC: CAN Telemetry and the Interboard Failover Link
+------------------------------------------------------------------------
+
+Two separate communication paths exist between this board and OBC, deliberately kept
+independent of one another:
+
+**a) CAN telemetry (data bus).** ~21 signals covering per-string voltage/current/
+temperature/status and per-rail e-Fuse current, at rates from 0.01 Hz (cycle count) to
+50 Hz (instantaneous current).
+
+**b) The BLOCK handshake (hardware GPIO link).** Three discrete signals
+(``RST_D'OBC``, ``BLK_D'OBC``, ``BLK_D'BB``) let each board's MCU actively check whether
+the *other* is alive, independent of whether CAN itself is working. This replaced an older
+pair of interrupt lines that were judged too electrically noisy and too likely to cause RTOS
+timing problems.
+
+**Why it matters:** If OBC's MCU locks up, this board can detect it three separate ways
+(CAN heartbeat, the BLOCK handshake, and abnormal current draw), and — if warranted — take
+over control of OBC's own e-Fuse rail to power-cycle it back to life. A discrete analog
+circuit (**MAX40200** ideal diode + RC network) watches an independent hardware heartbeat
+from this board's own MCU, so OBC can do the same thing in reverse within about 50 ms if
+*this* board's MCU goes silent.
+
+**Read more:** ``Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`` and
+``CAN Telemetry``.
+
+----
+
+How It All Works Together: Three Scenarios
+-----------------------------------------------
+
+**Normal operation.** Cells are monitored continuously by the BQ28Z610s; their outputs are
+OR-ed safely through the ideal diodes; protected battery voltage flows through the pack
+fuses and reverse-blocking diodes into the e-Fuses; the e-Fuses meter out five independent
+rails to COMMS, S-band, OBC, Payload, and MPPT; and the MCU reports all of it to OBC over
+CAN, cross-checked with the BLOCK handshake.
+
+**A downstream short (e.g., Payload rail).** The e-Fuse trips, its ``/FAULT`` line fires an
+interrupt, firmware kills all five rails, walks them back up one at a time, finds Payload
+still shorted, and holds only that rail off for a 5-second cooldown while the other four
+resume normally.
+
+**OBC's MCU locks up.** The CAN heartbeat stops and the BLOCK handshake fails to respond
+within its timing window. This board's MCU diagnoses the specific failure mode (per the
+12-case privilege matrix in the interboard-failover section) and, in the most severe cases,
+power-cycles OBC's own e-Fuse rail to force a reboot — all without needing OBC to be
+conscious enough to ask for help.
+
+----
+
+Where to Go Next
+-------------------
+
+This guide intentionally leaves out part-level derivations (resistor sizing, thermal
+budgets, simulation results) and the current list of open risks and TBDs — both are in the
+GitHub Project and in the further documentation below.`
+
 Battery Board
 =============
 
