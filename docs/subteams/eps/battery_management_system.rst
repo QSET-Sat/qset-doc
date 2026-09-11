@@ -1,11 +1,287 @@
+EPS Battery Board — Quick Start Guide
+======================================
+
+:Purpose: A fast, plain-language orientation to the Battery Board for anyone new to the
+          design. Each section below maps to a subsystem in the full design document
+          (``Battery Board.rst``) — read that document for derivations, part numbers, and
+          open risks; read this one to understand how the pieces fit together.
+:Companion board: MPPT/Power Distribution Board (handles charging; not covered here).
+:Status: Draft, mirrors design doc revision v0.3 (2026-09-08).
+
+.. contents:: Table of Contents
+   :depth: 2
+   :local:
+
+----
+
+The Big Picture
+----------------
+
+The Battery Board is one of two boards that make up the satellite's Electrical Power
+System (EPS). Its job is narrow and safety-critical: **store energy in the battery pack,
+protect it from every failure mode that could damage it or the spacecraft, and deliver
+protected raw battery voltage onto the PC104 bus for the rest of the satellite to use.**
+
+It does *not* charge the battery — that happens on the companion MPPT board — and it no
+longer does power conditioning (that moved to MPPT/PDB too, as of 2026-08-19). Everything
+on this board is either about **keeping the battery safe** or **getting power out safely**.
+
+A useful mental model is a chain of five jobs, each handled by a distinct subsystem,
+sitting between the battery cells and the rest of the satellite:
+
+
+----
+
+1. The Battery Pack
+---------------------
+
+**What it is:** 8 NCR18650GA Li-Ion cells arranged as **2S4P** — two cells in series (for
+~7.2 V nominal / 8.4 V full-charge bus voltage), four in parallel per series position (for
+capacity and discharge current).
+
+**Why split into two strings:** The pack is actually built as **two independent 2S2P
+strings** ("Pack A" and "Pack B"), each with its own protection IC, rather than one big
+2S4P block. This gives real-time A-vs-B telemetry comparison for fault detection, means no
+single point of failure takes down the whole pack, and halves the current (and therefore
+the heat) each string's switching FETs have to handle.
+
+**Read more:** ``Battery Configuration`` section of the full document.
+
+----
+
+2. Cell Protection & Balancing — BQ28Z610
+--------------------------------------------
+
+**What it is:** Two **BQ28Z610** ICs, one per 2S2P string. Each one is a dedicated 2-series
+Li-Ion protection and fuel-gauge chip.
+
+**What it does:**
+
+- Watches every cell for over/under-voltage, over/under-current, and over-temperature, and
+  can disable that string's charge/discharge path if a threshold is crossed.
+- Passively balances the two series cell groups (bleeds excess charge as heat).
+- Reports voltage, current, temperature, state-of-charge, and fault flags to the MCU over
+  I2C (one bus per IC, since both share the same fixed I2C address).
+
+**Why not simpler stacked single-cell ICs:** An earlier design stacked four single-series
+protection ICs instead. That was abandoned because if the bottom IC's FET opens, the IC
+above it loses its ground reference entirely and its readings become meaningless — a
+correctness problem, not just a nice-to-have. The 2S IC design avoids this by construction.
+
+**Read more:** ``IC Reference → Cell-Level Protection — BQ28Z610``.
+
+----
+
+3. Ideal-Diode OR-ing — LM74800-Q1
+-------------------------------------
+
+**What it is:** Two **LM74800-Q1** ideal-diode controllers, one at the output of each
+2S2P string, each driving a pair of back-to-back MOSFETs.
+
+**What it does:** Lets the two strings' outputs be safely tied together (OR-ed) even when
+they're at slightly different voltages, without one string back-feeding current into the
+other. It also doubles as the board's high-side power switch — pulling its ``EN/UVLO`` pin
+low disconnects that string's output entirely.
+
+**Why high-side, not low-side (ground):** Keeping the switching element out of the ground
+path means every board shares one continuous, undisturbed ground plane — important for
+clean I2C signaling and to avoid stray return currents finding their way onto data lines.
+
+**Read more:** ``Ideal Diodes — LM74800-Q1``.
+
+----
+
+4. Pack-Level Fusing
+----------------------
+
+**What it is:** One non-resettable time-lag ceramic fuse per 2S2P pack (30 A rated),
+sitting right at each pack's positive output header. This replaced an earlier per-cell
+PPTC (resettable, self-heating) fuse scheme.
+
+**What it does:** It's the fuse of last resort — a purely passive backstop against a hard
+short (e.g., stray debris bridging terminals) that doesn't depend on any active circuit
+surviving a radiation event to work.
+
+**Why the two packs' fuses are deliberately different:** Pack A uses a fuse with lower
+melting energy than Pack B's. If an ideal diode fails and the two packs start fighting each
+other, you want *one* fuse to clear quickly and the *other* to survive and keep the bus
+alive — identical fuses could clear together and lose both strings at once.
+
+**Read more:** ``Pack-Level Fusing``.
+
+----
+
+5. E-Fuse Power Distribution — the Heart of the Output Path
+----------------------------------------------------------------
+
+**What it is:** Two quad-channel programmable e-Fuse ICs (**TPS7H2140-SEP** for flight,
+substituted with the pin-compatible automotive-grade **TPS4H160-Q1** for the first
+prototype run on cost grounds), giving **8 channels total**.
+
+**What it does:** Each of the satellite's five downstream consumers of raw battery voltage
+— **COMMS, S-band, OBC, Payload, and the MPPT board itself** — gets its own independently
+current-limited, independently fault-monitored rail. Channels are *allocated by current
+need*, not one-per-rail:
+
+.. list-table:: Rail Allocation at a Glance
+   :header-rows: 1
+
+   * - Rail
+     - Channels
+     - Trip Current
+   * - Payload
+     - 3
+     - ~4.05–4.20 A
+   * - MPPT
+     - 2
+     - ~2.7–2.8 A
+   * - OBC
+     - 1
+     - ~1.4 A
+   * - S-band
+     - 1
+     - ~1.4 A
+   * - COMMS
+     - 1
+     - ~1.4 A
+
+**Why two e-Fuse ICs, not one:** A single quad-channel part can only cover four rails. A
+fifth consumer (MPPT's own ~2–3 A draw) was identified after the four-rail design was
+already locked in, so a second e-Fuse instance was added rather than trying to squeeze five
+rails out of four channels.
+
+**Also does:** Serves as the satellite's mandatory high-side launch inhibit (``EN`` gated
+by the deployment/watchdog timers), and absorbs the role of a formerly separate high-side
+inhibit IC that has since been removed.
+
+**Read more:** ``E-Fuse — TPS7H2140-SEP / TPS4H160-Q1`` and ``Channel Topology``.
+
+----
+
+6. Fault Handling in Firmware
+--------------------------------
+
+**What it is:** A firmware state machine, not a hardware feature — the e-Fuse ICs have no
+built-in auto-retry.
+
+**What it does, in plain terms:** If any rail's ``/FAULT`` line trips, firmware's first move
+is to kill *every* rail immediately (fast, safe, but blunt), then walk through all five
+rails one at a time, turning each back on briefly to see whether it's actually the faulted
+one. The one that's still short-circuited gets held off for a 5-second cooldown; the other
+four come back up. This trades a brief total blackout for a simple, fast interrupt handler.
+
+**Read more:** ``E-Fuse Fault Handling (Firmware)``.
+
+----
+
+7. Low-Side Inhibit — Launch Safety
+--------------------------------------
+
+**What it is:** An 8-MOSFET redundant array (**BUK9Y4R8-60E,115**) sitting in the battery's
+*ground* return path, driven through a capacitively-isolated gate driver
+(**TPSI3050-Q1**).
+
+**What it does:** This is a separate, independent safety switch from the e-Fuse's high-side
+inhibit — required so that nothing on the satellite can draw power during launch, even if
+the high-side path somehow failed on. It only closes once the deployment timer says
+deployment is complete.
+
+**Why 8 transistors:** Radiation-induced MOSFET failures are usually *short* failures. Two
+series pairs, doubled into two parallel branches, mean a single transistor failing short
+doesn't defeat the isolation, and a single one failing open doesn't cut off the current
+path either — at the cost of slightly higher combined resistance.
+
+**Read more:** ``Low-Side Inhibit — 8× BUK9Y4R8-60E,115``.
+
+----
+
+8. The MCU and Its Support Circuits
+---------------------------------------
+
+**What it is:** An **STM32U3B5CIT6** (Cortex-M33), replacing two earlier MCUs in
+succession — first for a second I2C peripheral (needed once two BQ28Z610s shared one I2C
+address), then for dual native CAN FD (needed once OBC required a redundant CAN
+architecture the earlier parts couldn't provide at all).
+
+**Supporting circuits on this board:**
+
+- **16 MHz crystal** (NDK NX3225SA) — clock reference, chosen for its wide temperature
+  rating and small, low-outgassing package.
+- **TPS3823-25DBVR supervisor** — resets the MCU on brownout or watchdog timeout,
+  independent of firmware; backed by an AC-coupled reset network so a *stuck* supervisor
+  can't hold the MCU in reset forever.
+- **Two TCAN334GDCNT CAN transceivers** — one per FDCAN peripheral, for the primary and
+  redundant telemetry bus to OBC.
+
+**Read more:** ``Microcontroller — STM32U3B5CIT6`` and its sub-sections.
+
+----
+
+9. Talking to OBC: CAN Telemetry and the Interboard Failover Link
+------------------------------------------------------------------------
+
+Two separate communication paths exist between this board and OBC, deliberately kept
+independent of one another:
+
+**a) CAN telemetry (data bus).** ~21 signals covering per-string voltage/current/
+temperature/status and per-rail e-Fuse current, at rates from 0.01 Hz (cycle count) to
+50 Hz (instantaneous current).
+
+**b) The BLOCK handshake (hardware GPIO link).** Three discrete signals
+(``RST_D'OBC``, ``BLK_D'OBC``, ``BLK_D'BB``) let each board's MCU actively check whether
+the *other* is alive, independent of whether CAN itself is working. This replaced an older
+pair of interrupt lines that were judged too electrically noisy and too likely to cause RTOS
+timing problems.
+
+**Why it matters:** If OBC's MCU locks up, this board can detect it three separate ways
+(CAN heartbeat, the BLOCK handshake, and abnormal current draw), and — if warranted — take
+over control of OBC's own e-Fuse rail to power-cycle it back to life. A discrete analog
+circuit (**MAX40200** ideal diode + RC network) watches an independent hardware heartbeat
+from this board's own MCU, so OBC can do the same thing in reverse within about 50 ms if
+*this* board's MCU goes silent.
+
+**Read more:** ``Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`` and
+``CAN Telemetry``.
+
+----
+
+How It All Works Together: Three Scenarios
+-----------------------------------------------
+
+**Normal operation.** Cells are monitored continuously by the BQ28Z610s; their outputs are
+OR-ed safely through the ideal diodes; protected battery voltage flows through the pack
+fuses and reverse-blocking diodes into the e-Fuses; the e-Fuses meter out five independent
+rails to COMMS, S-band, OBC, Payload, and MPPT; and the MCU reports all of it to OBC over
+CAN, cross-checked with the BLOCK handshake.
+
+**A downstream short (e.g., Payload rail).** The e-Fuse trips, its ``/FAULT`` line fires an
+interrupt, firmware kills all five rails, walks them back up one at a time, finds Payload
+still shorted, and holds only that rail off for a 5-second cooldown while the other four
+resume normally.
+
+**OBC's MCU locks up.** The CAN heartbeat stops and the BLOCK handshake fails to respond
+within its timing window. This board's MCU diagnoses the specific failure mode (per the
+12-case privilege matrix in the interboard-failover section) and, in the most severe cases,
+power-cycles OBC's own e-Fuse rail to force a reboot — all without needing OBC to be
+conscious enough to ask for help.
+
+----
+
+Where to Go Next
+-------------------
+
+This guide intentionally leaves out part-level derivations (resistor sizing, thermal
+budgets, simulation results) and the current list of open risks and TBDs — both are in the
+GitHub Project and in the further documentation below.`
+
 Battery Board
 =============
 
 :Status: Draft
 :Project Lead: Donovan Woo
 :Reviewers: TBD
-:Last Updated: 2026-08-29
-:Revision: v0.2
+:Last Updated: 2026-09-08
+:Revision: v0.3
 
 .. contents:: Table of Contents
    :depth: 3
@@ -26,8 +302,16 @@ monitoring, and distributing power from the Li-Ion battery pack to the rest of t
    **Scope change (2026-08-19):** the Power Conditioning Module (PCM) function has moved to the
    MPPT/Power Distribution Board. As of this revision, the Battery Board's sole downstream
    responsibility is to supply protected raw battery voltage onto the PC104 bus — it no longer
-   feeds a PCM stage directly. See `E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)`_ for the updated
+   feeds a PCM stage directly. See `E-Fuse — TPS7H2140-SEP / TPS4H160-Q1`_ for the updated
    output path.
+
+.. note::
+
+   **Scope change (2026-09-02):** a single quad-channel e-Fuse can only supply four independent
+   rails, but five downstream consumers now require raw battery voltage directly from this board
+   (COMMS, S-band, OBC, Payload, and — newly identified — the MPPT board itself, at an estimated
+   2–3 A). A second e-Fuse instance has been added to cover the fifth rail; see
+   `Channel Topology`_.
 
 This document covers:
 
@@ -39,6 +323,7 @@ This document covers:
 - Charging methodology (CC/CV)
 - Microcontroller pinout and interfacing
 - PC104 bus integration
+- Interboard reset, health-check, and e-Fuse-failover architecture between this board and OBC
 - Open risks, action items, and design change history
 
 .. note::
@@ -64,8 +349,9 @@ The battery pack uses a **2S4P** Li-Ion configuration:
 
 The battery cells used are the **NCR18650GA** (Panasonic).
 
-Each parallel bank is treated as an independent group, with per-cell fusing to isolate individual
-cell failures without taking down the whole bank.
+Each parallel bank is treated as an independent group. Fault isolation for an internally shorted
+cell is now handled at the pack level rather than per cell — see `Pack-Level Fusing`_ for the
+current architecture and the rationale for retiring the earlier per-cell PPTC approach.
 
 .. list-table:: Battery Configuration Summary
    :header-rows: 1
@@ -103,7 +389,7 @@ was chosen over a cold-spare or series-FET configuration for the following reaso
   normal operation. Since :math:`P = I^2 R`, halving the current reduces heat by a factor of 4.
 
 Why 2S Protection Instead of Stacked 1S
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The original design used stacked 1S cell protection ICs (BQ2970/BQ29723). This was replaced with
 the BQ28Z610 2S dedicated IC for the following reasons:
@@ -112,8 +398,11 @@ the BQ28Z610 2S dedicated IC for the following reasons:
   ``PACK_N``, allowing uncontrolled current paths.
 - **Doubled series resistance**: stacked 1S configurations require 4 MOSFETs in the main current
   path; the 2S IC uses only 2.
-- **1S ICs were not designed to be stacked**: floating ground voltages cause sensing errors. If the bottom protection IC opens its FET the midpoint voltage is no longer anchored to anything and floats to whatever value the parasitic capacitance, leakage currents, and any stray conductive path pulls it. The top IC, whose VSS is MID, now has a completely undefined reference. Its voltage measurements become meaningless garbage.
-  charge even at low state of charge.
+- **1S ICs were not designed to be stacked**: floating ground voltages cause sensing errors. If
+  the bottom protection IC opens its FET, the midpoint voltage is no longer anchored to anything
+  and floats to whatever value parasitic capacitance, leakage currents, and any stray conductive
+  path pulls it to. The top IC, whose VSS is at that midpoint, now has a completely undefined
+  reference, and its voltage measurements become meaningless.
 - **Space efficiency**: the BQ28Z610 integrates IV monitoring, temperature sensing, and cell
   balancing into a single compact IC.
 - **Redundancy**: if one 1S IC failed, all cells were unprotected. The 2S split-pack gives
@@ -146,14 +435,18 @@ Cell-Level Protection — BQ28Z610
        pre-charge timeout, fast-charge timeout.
        Cell balancing is passive (resistor + MOSFET bleed).
        Data output via I2C (``I2C_SDA``, ``I2C_SCK``) to the STM32 MCU.
-     - I2C address is fixed at 0x55 — both ICs share the same address, requiring either a
-       multiplexer or a second I2C peripheral on the MCU. Resolved by upgrading to the
-       STM32F030C8T6.
+     - I2C address is fixed at 0x55 — both ICs share the same address, requiring two independent
+       I2C peripherals on the MCU. Resolved by the STM32U3B5CIT6's four native I2C peripherals
+       (see `Microcontroller — STM32U3B5CIT6`_); this was the original reason the board first
+       moved off the STM32F030F4P6, and remains satisfied by the current MCU choice.
 
 .. note::
 
-   The BQ28Z610 replaces the original BQ2970/BQ29723 1S ICs. See `Rationale for 2S Protection`_
-   above for full justification.
+   The BQ28Z610 replaces the original BQ2970/BQ29723 1S ICs. See
+   `Why 2S Protection Instead of Stacked 1S`_ above for full justification. The
+   cell-protection netlist and or-ing schematic (linking the
+   BQ28Z610s to the LM74800-Q1 ideal diodes) were reviewed and corrected for errors as a
+   dedicated task; no component-value changes resulted beyond what is documented below.
 
 **Why Passive Cell Balancing?**
 
@@ -167,44 +460,32 @@ For this application, passive balancing is preferred because:
 - Passive components are simpler, more space-efficient, and have no additional failure modes.
 
 
-Buck-Boost Converter — TPS63060
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:Datasheet: https://www.ti.com/lit/ds/symlink/tps63060.pdf
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 40 30
+E-Fuse — TPS7H2140-SEP / TPS4H160-Q1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   * - What is it?
-     - Function in this circuit
-     - Limitations / Notes
-   * - Buck-boost switching regulator. Automatically transitions between buck and boost modes
-       to maintain a regulated output regardless of whether input voltage is above or below
-       the output setpoint.
-     - Converts an MPPT charge input to the voltage required to charge power the watchdog and deployment timer suring launch.
-       Feedback resistors R66 (560 kΩ) and R67 (100 kΩ) set the output voltage.
-       Output capacitors C58, C59, C60 = 22 µF each for filtering
-       Input capacitors C9, C10 = 22 µF; C11 = 0.1 µF.
-       Inductor L1 = 2.2 µH. (NEEDS TO BE VERIFIED FOR SWITCHING DUTY CYCLE)
-     - Input voltage range: 2.5 V – 12 V.
-       Efficiency: up to 93%.
-       Output current at 3.3 V (V\ :sub:`IN` < 10 V): 2 A (buck mode).
-       Output current at 3.3 V (V\ :sub:`IN` > 4 V): 1.3 A (boost mode).
-
-----
-
-E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-:Datasheet: https://www.ti.com/lit/ds/symlink/tps7h2140-sep.pdf
+:Datasheet (space-grade baseline): https://www.ti.com/lit/ds/symlink/tps7h2140-sep.pdf
+:Datasheet (prototype substitute): search manufacturer part TPS4H160-Q1
 :Replaces: TPS259472ARPWR (pack-output E-Fuse) **and** TPS24750 (high-side inhibit, see
    `Removal of TPS24750`_ below)
 
 The pack-output protection IC was upgraded from the COTS TPS259472ARPWR to the
 TPS7H2140-SEP, a Space Enhanced Plastic (SEP) grade quad e-Fuse rated for 30 krad(Si) TID
-and SEL immunity up to 43 MeV·cm²/mg. This single IC now also assumes the high-side inhibit
-role formerly filled by the TPS24750 (a COTS, non-radiation-qualified part).
+and SEL immunity up to 43 MeV·cm²/mg. This IC assumes the high-side inhibit role formerly
+filled by the TPS24750 (a COTS, non-radiation-qualified part).
+
+.. note::
+
+   **Prototype substitution (2026-09-06):** the TPS4H160-Q1, an automotive-grade part, was
+   found to be an almost exact functional equivalent of the TPS7H2140-SEP (same
+   :math:`R_{\text{LIMx}}` programming behaviour — the current-limit resistor calculation below
+   is unchanged and yields the same 1.35 A per-channel threshold). The automotive part is
+   substituted for the first prototype run on cost grounds alone (rad-hard SEP grade is
+   ~$1000/unit vs. under $5 for the automotive part). This is **not necessarily final** — the
+   space-grade TPS7H2140-SEP may be reinstated for the flight unit. Everything else in this
+   section (channel topology, protection behaviour, external component sizing) applies
+   identically to both parts unless noted.
 
 .. list-table::
    :header-rows: 1
@@ -213,49 +494,89 @@ role formerly filled by the TPS24750 (a COTS, non-radiation-qualified part).
    * - What is it?
      - Function in this circuit
      - Limitations / Notes
-   * - Radiation-tolerant, quad-channel programmable electronic fuse. Wide voltage headroom
-       (4.5 V – 32 V; 35 V absolute max) clears the 8.4 V peak charge voltage with large
-       margin against inductive/tether spikes.
+   * - Radiation-tolerant (SEP) or automotive-grade (Q1) quad-channel programmable electronic
+       fuse. Wide voltage headroom (4.5 V – 32 V; 35 V absolute max) clears the 8.4 V peak
+       charge voltage with large margin against inductive/tether spikes.
      - Protects the battery pack output and serves as the CubeSat's mandatory high-side
-       inhibit. Also gates the four downstream subsystem feeds (see `Channel Topology`_).
-     - :math:`R_{ON}` rises from 40 mΩ (25 °C) to 70 mΩ (125 °C), dissipating up to ~1.75 W
-       at 5 A — requires extensive copper pour and thermal vias under the PowerPAD for
-       vacuum conduction (no convective cooling in orbit).
+       inhibit. Two instances are now used (see `Channel Topology`_) to cover five
+       independently-metered downstream rails.
+     - :math:`R_{ON}` rises from 40 mΩ (25 °C) to 70 mΩ (125 °C) on the SEP part, dissipating
+       up to ~1.75 W at 5 A — requires extensive copper pour and thermal vias under the
+       PowerPAD for vacuum conduction (no convective cooling in orbit). Simulation shows the
+       combined two-IC dissipation could reach ~86.6 W if all five rails short
+       simultaneously (see `Simulation Findings`_), which the ``/FAULT``-driven firmware
+       response must clear within milliseconds.
 
 **Why not the original COTS E-Fuse?**
 
 PPTC fuses alone have a slow thermal response time; the original TPS259472ARPWR addressed
 that but, like the TPS24750 it shared duty with, carries no TID/SEL qualification. Both are
-replaced here by a single SEP-grade part to close that radiation-hardening gap.
+replaced here by the parts above to close that radiation-hardening gap (pending the
+automotive-vs-space-grade decision noted above).
 
 Channel Topology
 ^^^^^^^^^^^^^^^^^
 
 .. note::
 
-   **Design evolution:** the four channels were initially specified tied in parallel into a
-   single ~5.4 A raw-voltage rail feeding PC104 directly, with all four ``EN`` pins commoned
-   to a single MCU GPIO for simplicity (2026-08-08). This was superseded on 2026-08-28: the
-   four channels are now kept **electrically split**, one per downstream subsystem
-   (``E_FUSE_COMMS``, ``E_FUSE_SBAND``, ``E_FUSE_OBC``, ``E_FUSE_PAYLOAD``), so that OBC can
-   obtain independent current telemetry per bus and an overcurrent fault on one subsystem
-   does not blind or trip the others. ``EN`` control remains commoned across all four
-   channels (see `EN Signal Path`_ below) since the launch-inhibit requirement applies
-   uniformly regardless of output topology.
+   **Design evolution:**
 
-- **All-or-nothing enable, per-channel fault isolation**: a single ``EN`` gate satisfies the
-  CubeSat high-side-inhibit requirement for the whole pack, while each channel's own current
-  limit and diagnostics isolate a fault to just its subsystem.
+   1. *(2026-07-15, superseded)* All four channels of a single e-Fuse were tied in parallel
+      into one ~5.4 A raw-voltage rail feeding PC104 directly, with all four ``EN`` pins
+      commoned to a single MCU GPIO.
+   2. *(2026-08-08, VOID)* ``EN`` pulled permanently to 3.3 V so the e-Fuse defaults on
+      regardless of MCU state — rejected for not satisfying the mandatory high-side-inhibit
+      requirement.
+   3. *(2026-08-19)* ``EN`` tied to ``EN_D1``, the ANDed output of the watchdog and deployment
+      timers, so the e-Fuse is compliant with the CubeSat high-side-inhibit requirement
+      regardless of firmware state.
+   4. *(2026-08-28)* The four channels of the single e-Fuse were split electrically, one per
+      downstream subsystem, so OBC could get independent per-bus current telemetry and an
+      overcurrent fault on one subsystem would not blind or trip the others.
+   5. *(2026-09-02, current)* A fifth raw-battery-voltage consumer was identified — the MPPT
+      board itself draws an estimated 2–3 A — which a single quad-channel e-Fuse cannot
+      supply alongside the other four rails. **A second e-Fuse instance was added.** Each
+      1.35 A-rated channel is wired in parallel with others on the same rail according to
+      that rail's current need, rather than one-channel-per-rail:
+
+      .. list-table:: Rail-to-Channel Allocation
+         :header-rows: 1
+
+         * - Rail
+           - Channels (of 8 total)
+           - Approx. Trip Current (±6% mismatch)
+         * - ``E_FUSE_PAYLOAD``
+           - 3 (parallel)
+           - ~4.05 A (simulation: 4.05–4.20 A)
+         * - ``E_FUSE_MPPT``
+           - 2 (parallel)
+           - ~2.7 A (simulation: 2.7–2.8 A)
+         * - ``E_FUSE_OBC``
+           - 1
+           - ~1.36 A (simulation: 1.4 A)
+         * - ``E_FUSE_SBAND``
+           - 1
+           - ~1.36 A (simulation: 1.4 A)
+         * - ``E_FUSE_COMMS``
+           - 1
+           - ~1.36 A (simulation: 1.4 A)
+
+      Payload's 3-channel allocation is sized against its ~16 W peak power draw from the
+      July 2026 power budget (~2–3 A at battery voltage before margin); MPPT's 2-channel
+      allocation covers its identified 2–3 A draw. A 1 µF voltage-spike capacitor is retained
+      on every individual 1.35 A rail regardless of how many are joined in parallel for a
+      given downstream rail; see `Output Transient Protection`_ for how the negative-spike
+      clamp diode is shared across a paralleled rail.
+
+- **All-or-nothing enable within a rail, per-rail fault isolation across rails**: the
+  ``EN_D1`` hardware signal continues to satisfy the CubeSat high-side-inhibit requirement for
+  the whole pack (see below), while each rail's own current limit and diagnostics isolate a
+  fault to just that rail.
 - **Trade-off accepted**: per-subsystem power sequencing at the e-Fuse level is not available;
   downstream subsystems are responsible for their own inrush/startup sequencing.
 
 EN Signal Path
 ^^^^^^^^^^^^^^^
-
-The four ``EN`` pins are tied together and driven from ``EN_D1`` — the ANDed output of the
-watchdog and deployment timers (see `Timers — LTC6995HS6-1#TRMPBF (Deployment & Watchdog)`_) —
-satisfying the launch-safety requirement that current be inhibited between the source and any
-load until deployment is confirmed.
 
 .. note::
 
@@ -266,28 +587,39 @@ load until deployment is confirmed.
    - Driving ``EN`` from an MCU GPIO — rejected in favour of the hardware ``EN_D1`` net so
      that inhibit behaviour does not depend on firmware being alive.
 
+.. warning::
+
+   **Open reconciliation item (2026-09-02):** with the move to five independently-metered
+   rails, the firmware fault-handling design (`E-Fuse Fault Handling (Firmware)`_) calls for
+   each rail's ``EN`` to be individually driven by its own MCU GPIO — five dedicated pins
+   — so the auto-retry sequence can isolate a single shorted rail without dropping the other
+   four. _.
+
 **EN Polarity / Inverter Selection**
 
-``EN_D1`` is active-high, and the enable sense required by the e-Fuse needed inversion. A
+The enable signals are active-high, and the enable sense required by the e-Fuse needed inversion. A
 discrete MOSFET or BJT inverter was considered:
 
 - **BJT**: robust ESD tolerance and consistent :math:`V_{BE}` threshold, but a non-zero
   :math:`V_{CE(sat)}` (~0.1–0.3 V) sits uncomfortably close to the e-Fuse's shutdown
   threshold, and requires a series base resistor.
 - **Discrete MOSFET**: near-zero :math:`R_{DS(on)}` pull-down gives wider noise margin, but
-  discrete power MOSFETs are highly susceptible to Single-Event Gate Rupture (SEGR) and TID
+  discrete MOSFETs are more susceptible to Single-Event Gate Rupture (SEGR) and TID
   threshold shifts that can force a false-enable state.
 
 **Selected: SN54SC6T06-SEP** — a rad-hard (30 krad TID), quad-package logic-level open-drain
-inverter IC. A single package provides 6 independent inverters, enough to invert all 4 ``EN``
-lines from one small part rather than 4 discrete MOSFETs. :math:`V_{OL} < 0.2\text{ V}`,
-comfortably clear of the e-Fuse's enable/disable threshold, without the SEGR/TID risk of a
-bare discrete FET.
+inverter IC. A single package provides 6 independent inverters, enough to invert controls for
+one full e-Fuse's worth of channels (4) from one small part rather than 4 discrete MOSFETs.
+:math:`V_{OL} < 0.2\text{ V}`, comfortably clear of the e-Fuse's enable/disable threshold,
+without the SEGR/TID risk of a bare discrete FET. With two e-Fuse instances now in the design,
+a second inverter package (or the two spare channels of the first) covers the second IC's four
+``EN`` lines.
 
 Current-Limit Resistor Sizing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Each channel's trip current is set independently by its own :math:`R_{\text{LIMx}}` resistor.
+This calculation is identical for the TPS7H2140-SEP and the TPS4H160-Q1 automotive substitute.
 
 :Target: :math:`I_{OUTx,nom} = 1.35\text{ A}` per channel
 :Given: :math:`K_{CL} = 2500`, :math:`V_{CL,TH} = 0.8\text{ V}`, silicon gain accuracy
@@ -299,7 +631,8 @@ Each channel's trip current is set independently by its own :math:`R_{\text{LIMx
    = \frac{0.8\text{ V} \times 2500}{1.35\text{ A}} = 1481.48\ \Omega
 
 **Selected:** :math:`R_{\text{LIMx}} = 1.47\text{ k}\Omega` (E96, 1%), giving an adjusted
-nominal trip current of :math:`\approx 1.36\text{ A}`.
+nominal trip current of :math:`\approx 1.36\text{ A}`, applied identically on every channel of
+both e-Fuse instances regardless of how many channels are paralleled onto a given rail.
 
 .. list-table:: Per-Channel Trip Current (worst-case ±15% gain accuracy)
    :header-rows: 1
@@ -320,24 +653,54 @@ nominal trip current of :math:`\approx 1.36\text{ A}`.
 .. note::
 
    An earlier version of this analysis (VOID) sized a single shared :math:`R_{CL}` for a
-   4-channel *parallel* topology and derived a mismatch-adjusted system-level trip current of
-   ~4.79 A. That analysis is superseded by the per-channel split topology above, but the
-   per-channel resistor value it produced (1.47 kΩ) carried forward unchanged.
+   4-channel *parallel* topology feeding one combined rail, deriving a mismatch-adjusted
+   system-level trip current of ~4.79 A. That analysis is superseded by the per-channel,
+   per-rail-allocation topology above, but the per-channel resistor value it produced
+   (1.47 kΩ) carried forward unchanged and is confirmed correct for the current architecture.
 
-Diagnostics and Current Sense
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Diagnostics, Current Sense, and MCU Pin Budget
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``DIAG_EN`` is **enabled** (superseding an earlier VOID decision to permanently ground it) and
-connected to an MCU GPIO, now that the four channels are split per subsystem — this lets OBC
-poll per-bus fault status over CAN (see `CAN Telemetry`_).
+``DIAG_EN`` on both e-Fuse instances is **enabled** (superseding an earlier VOID decision to
+permanently ground it), connected so OBC can obtain per-rail current telemetry over CAN (see
+`CAN Telemetry`_).
 
+Two full e-Fuse ICs' worth of diagnostic and control signals must now share the MCU's limited
+remaining GPIO budget: **5** rail disable (``EN``) lines, **4** diagnostic-multiplexing lines
+(``SEL``/``SEH`` ×2 ICs), **2** current-sense lines, and **2** ``FAULT`` lines, against only
+~7 free MCU pins. An I2C GPIO expander was evaluated for the disable lines and rejected;
+a mixed strategy was selected instead:
+
+- **``EN`` (×5, one per rail): direct MCU GPIOs, not multiplexed.** An I2C-based expander
+  was ruled out for these specifically because (1) a heavy-ion strike or transient noise on an
+  open-drain I2C bus can hang a slave device holding SDA low, which would strand the MCU's
+  ability to disable a faulted rail until a full bus/MCU power cycle; and (2) common I2C GPIO
+  expanders (e.g. the TCA9534-SEP) power up with all pins as high-impedance inputs with
+  internal pull-ups, which — if the e-Fuse disable logic needs an active state to hold rails
+  off during boot — could let power channels turn on before flight firmware has configured the
+  expander's registers. Direct GPIO avoids both failure modes for a safety-critical function.
+- **``SEL``/``SEH``/``FAULT`` (2 of each, one set per e-Fuse IC): TCA9534 I2C GPIO
+  expander (TSSOP-16 package).** These are lower-consequence than the disable lines — a stuck
+  I2C bus here degrades diagnostics rather than failing a rail off — so the pin savings are
+  worth taking. TSSOP-16 (~5.0×4.4 mm) was chosen over the wider SOIC-16 (~10.3×7.5 mm) to
+  conserve board area next to the e-Fuse controllers and level shifters.
+- **``CS`` (×2, one per e-Fuse IC): SN74LVC1G3157 analog mux**, package SOT-SC70 (DCK). Gull-wing
+  leaded small packages were preferred here over leadless (USON/X2SON) or BGA packages, which
+  transfer launch-vibration mechanical stress directly into the die; the gull-wing leads flex
+  and absorb PCB bending instead of cracking the solder joints.
 - ``CS`` outputs a 1/300 current-sense ratio, capped at 4 V. :math:`R_{CS}` must be sized so a
-  worst-case 1.41 A channel peak (accounting for ~6% :math:`R_{ON}` mismatch) maps safely to
-  ≤ 3.3 V for the MCU's ADC. ``SEL``/``SEH`` must be toggled in firmware to select and read
-  each channel in turn.
-- **Open question:** whether e-Fuse current sensing is even needed, given the BQ28Z610 gas
-  gauges already provide high-resolution pack current telemetry independently.
-- All digital control lines (``EN1-4``, ``SEL``, ``SEH``, ``DIAG_EN``) get 4.7 kΩ series
+  worst-case single-channel peak (accounting for ~6% :math:`R_{ON}` mismatch) maps safely to
+  ≤ 3.3 V for the MCU's ADC; firmware toggles the mux select lines to sample and sum the
+  channels feeding a given rail (see `E-Fuse Fault Handling (Firmware)`_ for the sampling
+  sequence already worked out for MPPT and Payload).
+- A dedicated fault-detection front end built from external voltage comparators (one per
+  channel, plus a priority encoder) was considered and rejected: it would need 5 comparators
+  and a 74HC148-class encoder (3 more pins), adds components that can individually fail with
+  no redundancy benefit, and increases SEU-susceptible surface area for no gain over polling
+  the existing ``FAULT``/``CS`` lines through the MCU. A resistor-ladder/weighted-summing DAC
+  alternative was also rejected on temperature-drift grounds, since there isn't ADC/pin budget
+  to add temperature compensation for it.
+- All digital control lines (``EN`` ×5, ``SEL``, ``SEH``, ``DIAG_EN``) get 4.7 kΩ series
   isolation resistors to shield the MCU from negative transient spikes; ``FAULT`` uses a
   10 kΩ pull-up (VOL_FAULT ≤ 0.2 V at 2 mA sink; actual sink current through a 10 kΩ pull-up
   is only ~0.31 mA, well under the datasheet test point).
@@ -345,13 +708,20 @@ poll per-bus fault status over CAN (see `CAN Telemetry`_).
   (p. 3) — unbonded floating pins act as high-impedance antennas susceptible to
   radiation-induced charge buildup.
 
+.. warning::
+
+   The exact MCU pin assignment for the 5 ``EN`` lines, the TCA9534 address/interrupt pins,
+   and the ``SN74LVC1G3157`` select line has not yet been added to the pinout table in
+   `Microcontroller — STM32U3B5CIT6`_. See `Open Risks & TBDs`_.
+
 Output Transient Protection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Two passive clamps protect each channel output against inductive transients from fault trips,
-dynamic load switching, and cosmic-ray single-event transients (SETs) on the gate driver:
+Two passive clamps protect each rail's output against inductive transients from fault trips,
+dynamic load switching, and cosmic-ray single-event transients (SETs) on the gate driver.
 
-**Positive spike — 1 µF flex-termination MLCC.** Harness/trace inductance
+**Positive spike — 1 µF flex-termination MLCC**, present on every individual 1.35 A channel
+regardless of how many channels are paralleled onto a rail. Harness/trace inductance
 (:math:`L \approx 2\ \mu\text{H}`) dumping into the output capacitor during a fast
 (< 1 µs) trip event:
 
@@ -365,33 +735,56 @@ The resulting 0.21 V (~2.5%) rise sits comfortably under the 36 V absolute maxim
 flex-termination MLCC was chosen over rigid ceramic to absorb launch vibration and thermal
 flex without cracking (which would otherwise create a hard short to ground).
 
-**Negative spike — reverse-biased Schottky diode (1N5822U), anode to GND, cathode to**
-``V_OUTx``. Clamps the negative excursion to :math:`V_{OUT,min} \approx -0.25\text{ V}`,
-comfortably above the −0.3 V absolute minimum rating.
+**Negative spike — JANTXV 1N5806/1N5806U ultra-fast silicon rectifier**, one per paralleled
+rail (anode to GND, cathode to the rail), reverse-biased in normal operation.
 
 .. note::
 
-   The e-Fuse's own **output**-side Schottky diodes previously specified for reverse-current
-   blocking have been **removed**. The LM74800-Q1 ideal-diode OR-ing already in place at the
-   two 2S2P string outputs (see `Ideal Diodes — LM74800-Q1`_) already blocks any reverse path
-   back into the pack, so a redundant output diode was unnecessary.
+   **Component swap (2026-09-06):** the negative-spike clamp diode was changed from the
+   1N5822U Schottky originally specified to the JANTXV 1N5806/1N5806U ultra-fast silicon
+   rectifier. Motivation:
+
+   - **Thermal-vacuum leakage.** At elevated temperature (85–125 °C), large power Schottkys
+     like the 1N5822 suffer exponential growth in reverse leakage current (into the mA range),
+     wasting power continuously across a multi-channel bus. The 1N5806 holds high-temperature
+     reverse leakage in the µA range.
+   - **Flight heritage / SEE characterization.** The 1N5806 (MIL-PRF-19500/477) has
+     well-characterized TID and heavy-ion SEE performance, unlike the uncharacterized SEB risk
+     of a commercial Schottky.
+   - **Decoupling from the e-Fuse's internal clamp.** The 1N5806's higher forward voltage
+     (~0.7–1.0 V) still turns on well before the TPS7H2140-SEP/TPS4H160-Q1's own internal
+     active inductive clamp (:math:`V_{DS(clamp)} \approx -45\text{ V to } -60\text{ V}`), so
+     the external diode still absorbs the bulk of the trip-event energy pulse ahead of the
+     e-Fuse's internal single-pulse energy rating (:math:`E_{AS} = 40\text{ mJ}`).
+   - The originally-assumed constraint — that the output pin has a hard :math:`-0.3\text{ V}`
+     absolute-maximum limit requiring a very-low-:math:`V_F` Schottky — was found to be
+     incorrect: the TPS7H2140-SEP output stage has its own active clamp rated to
+     :math:`-45\text{ V}` to :math:`-60\text{ V}`, so the higher :math:`V_F` of a silicon
+     rectifier does not risk device damage.
+   - For rails with more than one channel paralleled (MPPT, Payload), a single shared 1N5806
+     is used per rail rather than one per channel — the diode only conducts for a fraction of
+     a microsecond per trip event, so its rating is not the limiting factor, and the small
+     increase in reverse-bias voltage at the higher combined current (to roughly 0.4–0.5 V at
+     temperature, from 0.3–0.35 V) is not enough to risk triggering internal ESD diodes or
+     substrate parasitic latch-up.
+
+   Paralleling multiple diodes on a single rail was considered and rejected: it roughly doubles
+   reverse leakage current, and halving the current only reduces :math:`V_F` by 0.3–0.5 V
+   regardless of temperature (per the diode's own datasheet curves) — a marginal benefit not
+   worth the extra part.
 
 Reverse-Current Protection at the E-Fuse Input
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The TPS7H2140-SEP provides no active reverse-current blocking of its own — under a
-short-to-power or reverse-polarity fault, reverse current is only current-limited
+The TPS7H2140-SEP / TPS4H160-Q1 provides no active reverse-current blocking of its own — under
+a short-to-power or reverse-polarity fault, reverse current is only current-limited
 (:math:`I_{R1} = 2.5\text{ A}` single-channel, :math:`I_{R2} = 2.0\text{ A}` all-channel), and
 while a channel is enabled, current flows through the FET with no blocking behaviour at all.
-Per TI's own guidance, a series blocking diode between the battery and the e-Fuse ``IN`` pin
+Per TI's own guidance, a series blocking diode between the battery and each e-Fuse ``IN`` pin
 (their "Method 1") is required.
 
 Three options were evaluated:
 
-- **LM74800-style ideal-diode controller** — rejected: lower conduction loss, but
-  automotive-grade (Q1) and not TID/SEE-characterized. Placing an unqualified active part at
-  the single node feeding the entire pack reopens the rad-hardening gap this whole migration
-  closed.
 - **TPS7H2201-SEP active front-end** (battery → 2201-SEP → 2140-SEP) — rejected: architecturally
   the cleanest (matched TID/SEE ratings, genuine active blocking), but adds a second active IC
   plus its own :math:`R_{ON}`/IR drop and diagnostic overhead for a function a passive part
@@ -407,48 +800,147 @@ carrying handling/disposal requirements the program is not equipped for, at a di
 cost for a part sitting at <15% utilization. **2× parallel 1N5822U** (LCC2B package) was
 selected on packaging/handling grounds instead, sized for 6 A against the 34.8 W maximum
 determined in the July 2026 power budget. Paralleling-mismatch risk is mitigated with
-same-lot/date-code sourcing and symmetric PCB layout.
+same-lot/date-code sourcing and symmetric PCB layout. This series input-blocking diode pair is
+unaffected by the 2026-09-06 negative-spike-clamp diode swap above (that change is at each
+channel's output, not the shared series input diode).
 
 :Accepted trade-off: fixed forward-voltage loss (~0.3–0.5 V), continuous under nominal
    operation.
 
-.. _`Removal of TPS24750`:
+**Removal of output Schottky diodes:** the e-Fuse's own output-side Schottky diodes previously
+specified for reverse-current blocking were removed as redundant. The LM74800-Q1 ideal-diode
+or-ing at the two 2S2P string outputs already prevents current from flowing backward through
+the pack; because the input side is already blocked, an external voltage spike on
+:math:`V_{OUT}` cannot complete a circuit back to a lower-potential node — the e-Fuse's input
+rail simply floats up through its own internal body diode instead, eliminating the voltage
+differential that would otherwise drive continuous reverse current.
 
-Removal of TPS24750
+Simulation Findings
 ^^^^^^^^^^^^^^^^^^^^
 
-The previous high-side inhibit, the TPS24750 (see former ``High-Side Inhibit`` section), was a
-COTS part with no radiation-hardened characteristics. Its role is fully absorbed by the
-TPS7H2140-SEP above. Its former downstream connection to the Power Conditioning Module (PCM)
-no longer applies now that PCM has moved to the MPPT/Power Distribution Board — the E-Fuse's
-(now four, split) outputs feed the PC104 bus directly for distribution to COMMS, S-band, OBC,
-and Payload.
+A PSpice transient simulation of the e-Fuse channel configuration (issue #139, closed) validated
+the following before PCB layout:
+
+- **Nominal trip currents** measured in simulation: MPPT rail (2 channels) trips at 2.8 A
+  (stable, untripped at 2.7 A); OBC/S-band/Comms rails (1 channel each) trip at 1.4 A (stable
+  at 1.3 A); Payload rail (3 channels) trips between 4.05–4.20 A. Response time to fully clear
+  the output is ~0.2 ms in each case, with higher-current rails clearing faster.
+- **Positive overvoltage transient (inductive load dump / bus surge):** a capacitive-coupling
+  injection test (a 40 V pulse through a 1 µF coupling capacitor onto the Payload rail's 3 µF
+  decoupling network) produced a peak of ~13.3 V before the e-Fuse recharged the decoupling
+  capacitance and the rail recovered.
+- **Negative voltage transient:** the same method at 50 V produced a brief −3.1 V spike before
+  the negative-spike clamp diode engaged and held the rail at approximately −0.3 V for the rest
+  of the transient (vs. an unclamped theoretical trough of about −4.7 V).
+- **Start-up inrush:** with a 47 µF downstream bulk capacitor and a load step from 100 mA to
+  3.5 A (under the channel limit) modeled on the Payload rail, the rail sags asymptotically to
+  ~7.6 V under load and recovers to 7.8 V once the load step ends, with no false trips.
+- **Short-circuit let-through:** modeling a hard short (0.01 Ω to ground) on the Payload rail
+  showed the current clamps at the expected limit with only a ~50 mA transient spike, and a
+  trip-response time of ~50 ns on the ``/FAULT`` line's leading edge.
+- **Combined worst case:** if all five rails short simultaneously, total trip current sums to
+  ~11.1 A and the two e-Fuse ICs together would dissipate ~86.6 W (99.65% of total system
+  thermal load in that event, vs. ~0.31 W in the wiring) — this must clear within a few
+  milliseconds via the firmware fault-handling sequence in
+  `E-Fuse Fault Handling (Firmware)`_, or thermal shutdown will occur.
 
 ----
 
-Per-Cell PPTC Fuses
-~~~~~~~~~~~~~~~~~~~~
+Pack-Level Fusing
+~~~~~~~~~~~~~~~~~~
 
-Four PPTC (Positive Temperature Coefficient) fuses were added, one per cell in each parallel bank.
+.. note::
 
-**Why add per-cell fuses?**
+   **Architecture change (2026-09-06/07, issue #201):** the original per-cell PPTC fusing
+   architecture (four PPTC fuses, one per cell, 4.5 A trip each) has been replaced with a
+   **single non-resettable time-lag fuse per 2S2P pack**, placed at the pack's positive output
+   header. The July 2026 power budget review that triggered this issue originally asked only
+   whether the PPTC *trip value* should drop from 18 A to 6–7 A; the resulting design review
+   concluded the PPTC architecture itself should be retired. Rationale:
 
-Each cell can develop an internal short. Without fusing, parallel cells will sink large currents
-into the shorted cell to balance the parallel voltage, causing overheating and potential fire.
-The per-cell fuse isolates the faulty cell, allowing the remaining cells in the bank to continue
-operating.
+   - **PPTC resistance is thermally reactive**, and in a vacuum, heat leaves almost exclusively
+     via conduction through traces/harnesses and radiation rather than convection. Heat
+     generated at a PPTC fuse sitting close to the cells can feed back into the pack and lower
+     the cells' thermal-runaway margin — the opposite of what a battery-protection fuse should
+     do.
+   - **Wide on-orbit temperature swings** can drift a PPTC's trip threshold enough to cause
+     false trips with no underlying fault.
+   - A PPTC's resettability is not actually available here: if a PPTC-to-battery thermal
+     feedback loop begins, the fuse will not reliably reset even after the fault clears — the
+     main advantage of a resettable fuse doesn't hold up under the failure mode it's most
+     likely to see.
+   - Active protection (a FET switch or e-Fuse-style IC) was explicitly ruled out at this
+     level: the pack-level fuse is the "fuse of last resort" underneath everything else, and it
+     needs to survive a radiation event that could otherwise disable an active switch.
 
-**Why PPTC?**
+**Why one fuse per pack, not per cell or per branch:** internal per-branch fuses add extra
+:math:`R_{DCR}` that distorts the BQ28Z610 gas gauge and balancer's voltage readings, and
+create a real risk of cascading branch trips during a current spike in one cell. Since each
+2S2P module already behaves as one electrical unit with its own dedicated balancer and gas
+gauge, a single pack-level fuse at the output header gives deterministic fault isolation for
+the pack as a whole without those side effects.
 
-- Very low voltage drop in normal operation.
-- Automatically resettable — no manual intervention required.
-- Single component; minimal board space impact.
-- Slow response time is not detrimental in this application (the E-Fuse handles fast faults).
+**Sizing.** Each e-Fuse instance has a combined channel current limit of 10.8 A; with two
+packs sharing the load, each pack nominally carries 5.4 A, but must be able to carry the full
+10.8 A alone if the other pack's string fails. Applying an operational derating
+(:math:`k_{op} = 0.75`), a thermal derating (:math:`k_{temp} = 0.70`, estimated from the
+NCR18650GA datasheet's −10 °C to 25 °C capacity difference), and a vacuum/conduction derating
+(:math:`k_{vac} = 0.80`, to account for slower heat dissipation with no convective cooling):
 
-**Fuse Rating**
+.. math::
 
-Each fuse was selected with a trip current of **4.5 A**. With 4 cells, this gives the pack
-a total fault current budget of **18 A** before tripping.
+   I_{\text{fuse, min}} = \frac{I_{\text{nom}}}{k_{op} \times k_{temp} \times k_{vac}}
+   = \frac{10.8\text{ A}}{0.75 \times 0.70 \times 0.80} = \frac{10.8\text{ A}}{0.42}
+   \approx 25.7\text{ A}
+
+A 30 A-rated part is the smallest standard rating clearing this 25.7 A floor.
+
+**Placement and fault coverage.** The fuse sits as physically close as layout allows to the
+cell terminals or the pack's output header. This location is sized to clear *hard* shorts —
+loose metallic debris bridging terminal pads in zero-g, a radiation burst punching through the
+ORing FET's silicon substrate, or a direct terminal-to-terminal fault — which is the dominant
+failure mode expected at this location. A soft short (e.g. through a 1 Ω resistive fault) would
+not draw enough current to trip this fuse; that class of fault is caught downstream by the
+e-Fuse's much lower per-channel thresholds instead.
+
+**Asymmetric timing between the two packs.** If one string's LM74800-Q1 ideal diode fails and
+the two packs' voltages become mismatched, current will loop between the packs and both fuses
+would see the fault current simultaneously. If both pack fuses were identical, they could clear
+together, killing both strings and eliminating the benefit of the dual-pack architecture (since
+the ideal diode exists specifically to keep two simultaneously-healthy packs from back-feeding
+each other — if one diode has already failed, only one pack is expected to remain usable
+regardless). Two candidates with deliberately different melting-energy characteristics were
+selected so that one pack reliably clears first, preserving the other:
+
+.. list-table:: Pack Fuse Candidates
+   :header-rows: 1
+   :widths: 15 40 45
+
+   * - Pack
+     - Part
+     - Role
+   * - Pack A
+     - Littelfuse 0456030 — fast/standard time-lag ceramic, 1206 SMD, 30 A, low/medium
+       :math:`I^2t` (~15–25 A²s)
+     - Clears first during a cross-pack loop fault (an 80–120 A+ back-feed from a shorted
+       ORing FET), absorbing its melting energy quickly (~1–3 ms). Cold DCR ~1.5–2.0 mΩ,
+       minimizing voltage-drop error seen by the gas gauge/balancer.
+   * - Pack B
+     - Eaton CB61F30A — high-inrush/heavy time-lag ceramic, 1206 SMD, 30 A, high
+       :math:`I^2t` (~65–95 A², roughly 3–4× Pack A's)
+     - Sees the same fault current but its greater thermal mass means it has absorbed only
+       ~20–25% of its melting energy by the time Pack A clears at ~2 ms, so it rides through
+       the transient and continues to safely supply the system bus alone. Cold DCR
+       ~1.2–1.8 mΩ.
+
+**Paralleling rejected.** Running two lower-rated fuses in parallel per pack (to halve
+:math:`R_{DCR}` and spread heat across two locations) was considered and rejected: with a
+30 A part's cold :math:`R_{DCR}` of ~1.5 mΩ, resistive power loss is already only
+:math:`I^2R = (10.8\text{ A})^2 \times 0.0015\ \Omega \approx 0.175\text{ W}` — not enough to
+justify the added complexity — and any real-world mismatch between two paralleled fuses risks
+one tripping slightly early on thermal grounds and dragging the other down with it, which
+defeats the purpose of splitting the current in the first place. Thermal management at 30 A is
+instead handled with copper pour/plane sizing around the single fuse footprint.
 
 ----
 
@@ -459,7 +951,14 @@ Ideal Diodes — LM74800-Q1
 
 Ideal diodes were added between the outputs of the two 2S2P battery strings to prevent
 back-feeding current from one string into the other when the strings are at different states
-of charge.
+of charge. The gas-gauge-to-ideal-diode netlist was reviewed and corrected for labeling errors
+(issue #135, closed); no component-value changes resulted.
+
+.. note::
+
+   Should an ideal diode itself fail and let the two strings back-feed each other, the pack
+   fuses are now deliberately given *asymmetric* time-lag characteristics so that one pack
+   clears before the other rather than both clearing together — see `Pack-Level Fusing`_.
 
 .. list-table::
    :header-rows: 1
@@ -478,7 +977,7 @@ of charge.
        Reverse blocking response time: 0.5 µs.
        Not yet extensively flight-heritage tested in space.
 
-**4-MOSFET Architecture (2 per Rail)**
+**2-MOSFET Architecture (2 per Rail)**
 
 To achieve true power path isolation and complete logical shutdown via the ``EN/UVLO`` pin,
 each power rail uses two N-channel MOSFETs in a back-to-back common-source configuration:
@@ -515,6 +1014,7 @@ The MOSFET configuration above allows for the ideal diode to be controlled throu
      - OFF (open)
      - V\ :sub:`SNS` (pulled high)
      - **Active OR-ing** — 1.4 ms soft-start ramp; FETs fully enhanced
+
 **Ideal Diode Placement: High-Side vs. Low-Side**
 
 The ideal diodes are placed on the **positive (high-side) rail**, not in the ground return path.
@@ -560,80 +1060,255 @@ Timers — LTC6995HS6-1#TRMPBF (Deployment & Watchdog)
        Frequency set by a voltage divider on the ``DIV`` pin (two selectable settings via
        connector pins).
        Has a hardware reset feature.
-     - Two instances:
-
-       **Watchdog Timer**: monitors the MCU. Oscillates at 2.5 s with a 1.25 s delay from the
-       last received PPS signal from the OBC. If PPS is not received in time, the watchdog
-       resets the MCU.
+     - How it's used:
 
        **Deployment Timer**: ensures ``EN_D1`` is only activated after the satellite has
-       completed deployment. The timer output connects to the low-side inhibit ground path;
-       nothing can be activated during deployment. The ANDed output of watchdog + deployment
-       timer (in ``power_control_RBF.sch``) provides dual-redundant safety to prevent false
-       positive activations.
+       completed deployment. The timer output connects to the low-side inhibit gate-driver
+       enable path (see `Low-Side Inhibit — 8× BUK9Y4R8-60E,115 (Redundant MOSFET Array)`_);
+       nothing can be activated during deployment. 
      - Supply voltage: max 6 V.
        Operating temperature: −40 °C to +125 °C.
 
 ----
 
-High-Side Inhibit (Superseded)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Low-Side Inhibit — 8× BUK9Y4R8-60E,115 (Redundant MOSFET Array)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
-   The TPS24750 previously served as the high-side inhibit here. As of 2026-08-19 this role
-   is filled by the TPS7H2140-SEP e-Fuse — see
-   `E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)`_ for the current design, including the
-   rationale for retiring the TPS24750 (a COTS, non-radiation-qualified part).
+   **Full redesign (2026-09-02 through 2026-09-07, issue #203).** The low-side inhibit
+   requirement grew from "switch ~1.3 A" to "switch ~10 A without significant heating," which
+   the previously-specified NTJD1155L (±1.3 A max) could not meet — see the Component Change
+   Log for that history. The replacement below is a from-scratch design, not a drop-in part
+   swap.
 
-----
-
-Low-Side Inhibit — NTJD1155L (Under Revision)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-:Datasheet: https://www.onsemi.com/pdf/datasheet/ntjd1155l-d.pdf
-
-Low-side inhibits cut the *ground* connection of the load from the source. Placed between the
+Low-side inhibits cut the *ground* connection of the load from the source, placed between the
 load and ``PACK_N`` (pack negative terminal). This is a mandatory launch safety requirement to
-prevent hazardous operation during launch.
+prevent hazardous operation during launch. The design must conduct roughly 10–12 A continuously
+with low :math:`R_{DS(on)}` and negligible heating, and turn on when ``EN_D3`` (from the
+deployment timer) goes high.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 40 30
+**MOSFET over BJT.** Holding a BJT on at 10 A would waste a large amount of continuous base
+drive current (0.5 A+), whereas a MOSFET gate draws essentially zero steady-state current. A
+BJT's :math:`V_{CE(sat)}` also offsets the system ground reference by 0.3–0.7 V relative to
+true battery negative, which would corrupt clean analog sensor readings referenced to that
+ground. MOSFETs were selected on this basis, with the caveat that a rad-hard/rad-tolerant part
+is required given MOSFETs' general susceptibility to cosmic-ray-induced failure.
 
-   * - What is it?
-     - Function in this circuit
-     - Limitations / Notes
-   * - Dual P+N channel MOSFET load switch. The load connects directly to the positive rail;
-       the ground return path is switched.
-       Pull-up resistor R: 10 kΩ – 1 MΩ.
-     - Controlled by ``EN_D3`` (from the deployment timer in ``power_control_RBF.sch``).
-       When the deployment timer activates, the circuit becomes connected to ground, allowing
-       current to flow.
-     - Supply line voltage: 1.8 V – 8 V.
-       Max current: ±1.3 A. **This component is under review** — the entire battery discharge
-       current passes through this device; the package is too small to handle the required
-       current.
+**GaN vs. silicon MOSFET.** A GaN FET (EPC7019G) was compared against a rad-hard silicon
+MOSFET (IRHF57034) and looked attractive on paper — roughly 10× lower :math:`R_{DS(on)}`
+(4.5 mΩ vs. 48 mΩ), 10× less power dissipation at 10 A (0.45 W vs. 4.80 W), a lower required
+gate-drive voltage, and a much smaller/lighter package. A more budget-friendly GaN candidate,
+the EPC2204, was investigated further, but its 2.5 V gate threshold would require driving it
+from the MPPT board's 5 V rail through a dedicated low-side GaN driver rather than directly
+from 3.3 V logic — adding a rail dependency and a driver IC as new failure modes for an
+efficiency gain that did not justify them.
+
+**Final decision: silicon MOSFET, not GaN.** The BUK9Y4R8-60E,115, an automotive-grade
+silicon MOSFET, was selected over the GaN candidates:
+
+- It operates natively on 3.3 V gate drive, unlike the EPC2204's need for a 5 V-derived driver.
+- Adopting GaN would add a dedicated driver IC and a dependency on the MPPT board's 5 V rail
+  being stable — additional failure modes for an efficiency gain that matters less once the
+  MOSFET is arranged in the redundant array below.
+- GaN die are more mechanically fragile; the MOSFET's standard LFPAK56 (Power-SO8)
+  copper-clip package handles mechanical shock and launch vibration well.
+- With the series-pair arrangement below, the combined on-resistance per parallel branch is
+  only ~14 mΩ, giving a total voltage drop across the whole low-side switch of only ~0.084 V
+  at 12 A — close enough to the GaN option's headline number that GaN's advantages stopped
+  being decisive.
+
+**Quad-transistor redundancy arrangement.** Rather than a single switch, the design uses 8
+discrete MOSFETs arranged as two parallel branches of two series-connected pairs, doubled
+again into a back-to-back (bidirectional) pair of legs to block current in both directions
+through the body diodes — the same principle used for the ideal-diode 4-MOSFET architecture
+elsewhere in this document, but built from fully passive discrete devices instead of an active
+controller IC:
+
+- **Series pairs** double the effective breakdown-voltage margin (in the ideal case, voltage
+  splits evenly across the pair) and mean that a single transistor failing *short* does not
+  collapse the isolation — its series partner still blocks.
+- **Parallel branches** split the current and mean a single transistor failing *open* does not
+  interrupt the whole path — the parallel branch still carries current.
+- **Net on-resistance** is unchanged from a single transistor: doubled by the series
+  connection, then halved again by the parallel connection.
+- This arrangement uses no active control logic, so it cannot suffer a single-event
+  latch-up or software lockup — gate nodes are held to a defined state (see
+  `Protection Components`_) purely by passive resistors and Zener clamps during launch, which
+  was judged the most fail-safe hardware state achievable for a mission-critical, single-use
+  deployment mechanism.
+- A reliability model (probability of system failure vs. added redundant FET area) was used to
+  quantify the benefit:
+
+  .. list-table:: Redundancy vs. Reliability Trade-off
+     :header-rows: 1
+     :widths: 25 20 15 15 15 20
+
+     * - Configuration
+       - Auxiliary FET Area (S)
+       - Fail-Short
+       - Fail-Open
+       - Total Failure
+       - vs. Single FET
+     * - Single MOSFET
+       - 0.0×
+       - 1.0000%
+       - 0.0000%
+       - 1.0000%
+       - Baseline (1×)
+     * - 2S2P array
+       - 0.0× (no driver)
+       - 0.0199%
+       - 0.0396%
+       - 0.0592%
+       - 16.9× safer
+     * - 2S2P array
+       - 0.5× FET area
+       - 0.0199%
+       - 0.0614%
+       - 0.0813%
+       - 12.3× safer
+     * - 2S2P array
+       - 1.0× FET area
+       - 0.0199%
+       - 0.0880%
+       - 0.1079%
+       - 9.3× safer
+     * - 2S2P array
+       - 2.0× FET area
+       - 0.0199%
+       - 0.1568%
+       - 0.1767%
+       - 5.7× safer
+     * - 2S2P array
+       - 5.0× FET area
+       - 0.0199%
+       - 0.4603%
+       - 0.4802%
+       - 2.1× safer
+
+  Every redundant configuration beats a single FET; larger auxiliary FETs trade a lower
+  fail-short probability improvement for a *higher* fail-open probability (more silicon area
+  means more that can fail open), so there is a diminishing-returns point rather than "bigger
+  is always safer." The design does not lock in one specific auxiliary-area ratio from this
+  table; it is retained as the sizing tool for the final layout pass.
+
+**Why discrete MOSFETs over integrated dual/quad load-switch ICs.** Integrated switch ICs
+with active current limiting, or with any mismatch in their internal :math:`R_{DS(on)}`, do not
+share current equally when placed in parallel: one IC ends up carrying the majority of the
+current, hits its own thermal or overcurrent limit, shuts itself down, and dumps the entire
+load onto the remaining parallel IC — a cascading trip. Stacking two integrated low-side load
+switches in series is also awkward: the "ground" pin of the top switch sits on top of the
+bottom switch's :math:`V_{DS}` drop, which disturbs the top switch's internal control
+thresholds, charge pump, and UVLO detection. Discrete, individually-biased MOSFETs avoid both
+problems.
+
+Protection Components
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. warning::
 
-   **NTJD1155L is being replaced.** The entire battery current return path runs through this
-   device, exceeding its 1.3 A rating. Candidate replacements:
+   These values were derived while the EPC2204 GaN FET was still the leading candidate (its
+   6.0 V absolute max gate rating specifically motivates the 5.1 V Zener clamp below), before
+   the MOSFET-vs-GaN decision above was finalized. The pull-down and flyback-diode choices are
+   generic and still apply, but the Zener clamp voltage should be re-checked against the
+   BUK9Y4R8-60E,115's actual gate ratings before schematic capture. See `Open Risks & TBDs`_.
 
-   - **FDC6318P** (dual P-channel): larger footprint; requires a NOT gate to invert the
-     enable signal since it is P-channel rather than N+P.
-   - **2× discrete MOSFETs (P + N)**: requires a gate resistor and space verification.
+- **22 Ω series gate resistor** (revised from an initial 1 kΩ, which was found to be too high
+  for the capacitive SSR gate driver below to adequately drive the MOSFET gates).
+- **100 kΩ gate pull-down resistor**: holds the FET reliably OFF whenever the control signal is
+  floating, disabled, or the board is initializing. A high value is used specifically so it
+  doesn't form a voltage divider that could partially bias the gate, though this also makes it
+  more susceptible to acting as an antenna for an SEU-induced spurious turn-on — trace length
+  between this resistor and the gate should be minimized on the PCB.
+- **BZT52B5V1 5.1 V Zener diode**: clamps :math:`V_{GS}` below the (GaN-era) 6.0 V absolute
+  maximum to prevent gate dielectric breakdown.
+- **1 µF drain-source snubber capacitor** with a 10 Ω series damping resistor: absorbs
+  high-frequency inductive ringing across drain and source during switching transitions.
+- **1N5822U Schottky flyback diode**: bypasses reverse inductive load current so the switch
+  does not operate in its high-loss third-quadrant reverse-conduction mode.
 
-   Additionally, the **ferrite bead** connected to the negative battery terminal has strict
-   current limits and must be reviewed if the low-side switch is on the same net.
+Capacitive-Isolated Gate Driver — TPSI3050-Q1
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Why Disconnect Ground During Launch?**
+:Datasheet: search manufacturer part TPSI3050-Q1 (isolated capacitive gate driver)
 
-- Intense vibrations can cause electrostatic discharge events.
-- There is an increased risk of stray currents with the ground connected during launch.
-- This is a **mandatory launch requirement** per CubeSat standards.
+Because the 8-FET array stacks transistors in series, several of the gate nodes are floating —
+referenced to a source that itself sits at an elevated, non-ground potential and drifts as the
+switch state changes. Biasing a floating gate directly from a 3.3 V rail referenced to system
+ground doesn't work: the source (and therefore the required gate voltage) drifts to an
+unpredictable level with no defined DC reference, since it's only capacitively coupled to
+system ground rather than tied to it.
 
-----
+An isolator solves this by referencing the gate-drive voltage directly to the floating source
+itself, so the gate-to-source potential difference stays constant regardless of where the
+source drifts to. Two isolation technologies were compared:
+
+- **Optocoupling** — rejected: optical coupling paths degrade under total ionizing dose in
+  LEO, which is exactly the environment this part needs to survive in.
+- **Silicon-dioxide capacitive isolation** — **selected**. It avoids the TID-driven optical
+  degradation of an optocoupler; it generates the ~10 V :math:`V_{GS}` needed on the secondary
+  side locally (via an internal charge pump), avoiding a separate isolated DC-DC converter per
+  stacked tier; and it draws zero secondary-side current when disabled, which matters for
+  meeting the strict pre-deployment launch-isolation requirement.
+
+**TPSI3050-Q1** was chosen specifically because it provides two isolated power rails from one
+package with no extra signal accommodation needed, and because — unlike a general-purpose
+isolator, which would still need an external converter to generate a high enough voltage to
+bias a FET gate — it is purpose-built to drive MOSFETs directly via its integrated charge pump.
+Using this driver instead of building the equivalent function from discrete parts reduces
+component count by roughly an order of magnitude.
+
+**Configuration choices:**
+
+- **Three-wire mode** (not two-wire): the driver's primary :math:`V_{DD}` pin is powered from
+  the board's steady 3.3 V rail, leaving the ``EN`` pin purely as a logic control line. This
+  lets the internal oscillator/charge pump transfer maximum energy across the capacitive
+  barrier to charge the MOSFET gate capacitance cleanly. Two-wire mode would instead source
+  power from the ``EN`` line itself — a line not meant to be loaded — and gives less
+  deterministic, slower behaviour. Since the 3.3 V rail is already present on the board,
+  three-wire mode adds no extra components.
+- **Standard Enable mode** (not One-Shot Enable): the IC outputs power whenever ``EN`` is high,
+  matching the existing timer-driven enable signal directly. One-Shot Enable would require a
+  latch at each MOSFET, adding components and failure modes for no benefit here.
+
+**Component sizing** (one driver drives 2 MOSFETs in this design):
+
+.. math::
+
+   Q_{LOAD} = 2 \times Q_{G(tot)} = 2 \times 54.8\text{ nC} = 109.6\text{ nC}
+
+Using TI's recommended sizing method (:math:`n = 1.0`, :math:`C_{DIV1} = C_{DIV2}`, maximum
+allowable droop :math:`\Delta V = 0.5\text{ V}`):
+
+.. math::
+
+   C_{DIV1} = C_{DIV2} = \frac{1+1}{1} \times \frac{Q_{LOAD}}{\Delta V}
+   = 2 \times \frac{109.6\text{ nC}}{0.5\text{ V}} = 438.4\text{ nF}
+
+Derating 30–50% for DC bias (these capacitors sit across ~10 V on the secondary side) and
+temperature variation in orbit, then applying a ×2 safety factor, gives a derated target of
+~876.8 nF. **Selected: 1.0 µF, 50 V rating, X7R dielectric, 0805 (603 if space allows)** for
+both :math:`C_{DIV1}` and :math:`C_{DIV2}` — comfortably above the 438 nF floor without going
+so large that it risks leaving the isolator in undervoltage lockout (UVLO) during switch-on.
+
+- :math:`R_{PXFR} = 7.32\text{ k}\Omega` (per the TPSI305x design calculator): since this is a
+  static DC application (:math:`f_{MAX} \approx 0\text{ Hz}`), the minimum power-transfer
+  setting is more than sufficient to hold the gates permanently ON, delivering
+  :math:`I_{OUT} = 0.37\text{ mA}`.
+- :math:`C_{VDDP}`: **1.0 µF in parallel with 100 nF** on the primary-side supply decoupling
+  (VDDP to VSSP), per the datasheet's recommendation — the 1 µF acts as a ripple reservoir
+  (the IC does not draw steady DC current) and the 100 nF handles high-frequency filtering.
+- **Gate driver output resistor** :math:`R_G`: a single DC output needs only a simple
+  low-pass filter against the MOSFET's gate capacitance (:math:`C_{ISS}`) and PCB trace
+  inductance, which would otherwise ring at turn-on/turn-off and produce high-:math:`dV/dt`
+  spikes on :math:`V_{GS}`. A **10–22 Ω** resistor critically damps this. Dedicated series
+  resistors (:math:`R_{G1}`, :math:`R_{G2}`) are placed individually at each gate rather than
+  one shared resistor at the driver's output pin, so that an internal gate-oxide breakdown in
+  one MOSFET cannot directly short out the gate-drive signal feeding its parallel-leg partner.
+
 
 Microcontroller — STM32U3B5CIT6
 --------------------------------
@@ -763,17 +1438,58 @@ board; it was re-evaluated independently here rather than simply inherited.
        inverter needed. Fixed 200 ms power-on delay and 1.6 s watchdog timeout.
        15 µA quiescent draw.
      - Push-pull only (no open-drain variant exists in this family — that's the TPS3828);
-       cannot be wire-ORed with another reset source. The ``-25`` suffix trips at ~2.25 V.
+       factory-fixed 200 ms/1.6 s timing windows. The ``-25`` suffix trips at ~2.25 V — a
+       fairly loose margin for supervising a 3.3 V rail (a ``-30``/``-33`` suffix, tripping
+       ~2.7–3.0 V, would catch a sagging 3.3 V rail earlier), addressed below by intentionally
+       setting the MCU's own internal brownout threshold lower still.
 
 **Manual reset:** ``MR`` uses a pull-down solder jumper (as on the MPPT board) in place of a
 physical switch, with a standard 10 kΩ pull-up so ``MR`` is not randomly triggered.
 
-**No Schottky diode on the reset line.** Once the internal STM32 brownout level is set below
-2.25 V (see `Brownout Reset`_ below), there is no contention on ``RESET*`` to arbitrate. Adding
-a Schottky here would force the MCU to rely on a passive pull-up (subject to parasitic-
-capacitance delay) instead of the supervisor's fast, clean active push-pull transition — a
-meaningfully more robust choice against space-environment failure modes like tin-whisker growth
-or leakage from damaged neighbouring components.
+**Reset-line network (revised 2026-09-05).** An earlier decision to omit any component between
+the supervisor's ``RESET`` output and the MCU's ``NRST`` pin (reasoning: with the internal BOR0
+threshold set below the supervisor's ~2.25 V trip point, there is no contention to arbitrate,
+so a bare push-pull connection is the cleanest, fastest transition) was voided in favour of an
+AC-coupled reset network, once it was recognized that this left no protection against the
+supervisor IC itself failing and holding ``NRST`` low forever:
+
+- A **1 µF series capacitor** in a high-pass configuration between ``RESET`` and ``NRST``
+  ensures a stuck-low fault on the supervisor's output cannot hold the MCU in reset
+  indefinitely — only a genuine edge (a real reset event) passes through.
+- A **dual Schottky clamp** across the coupling node protects against the positive and
+  negative voltage transients produced when that capacitor charges/discharges.
+- A **100 Ω resistor** sits between the ground-referenced Schottky and ``NRST`` to limit
+  current into the MCU if that diode fails short; a higher value was avoided because the
+  resulting voltage drop would degrade the Schottky's own clamping performance.
+
+.. list-table:: Reset Network Failure Modes
+   :header-rows: 1
+   :widths: 20 15 30 35
+
+   * - Failed Component
+     - Failure Mode
+     - MCU Operational State
+     - System Safety Result
+   * - :math:`C_{series}`
+     - Open
+     - MCU runs normally
+     - Safe (reset disabled)
+   * - :math:`C_{series}`
+     - Short
+     - MCU runs normally (until driver fails)
+     - Vulnerable to DC lockup (same exposure as before this change)
+   * - :math:`R_{pullup}`
+     - Open
+     - MCU unstable / random reboots
+     - Degraded, but no worse than the pre-existing exposure
+   * - D1 (upper Schottky)
+     - Short
+     - MCU runs normally
+     - Safe (reset disabled)
+   * - D2 (lower Schottky)
+     - Short
+     - MCU trapped in perpetual reset
+     - Increased temperature; the 100 Ω resistor limits the resulting current
 
 Brownout Reset
 ~~~~~~~~~~~~~~~
@@ -802,7 +1518,29 @@ USART2 Debug Header
 ~~~~~~~~~~~~~~~~~~~~~
 
 USART2 pins are broken out to a header as a secondary debug path, in case the CAN bus or the
-primary programming header is unavailable or malfunctioning during bring-up testing.
+primary programming header is unavailable or malfunctioning during bring-up testing. This, however, is likely
+to be removed in order to implement the signals between the OBC and this Battery Board.
+
+GPIO / Pin Budget Pressure (Open)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The second e-Fuse instance and the new interboard reset/failover architecture together add a
+significant number of new signals that did not exist when the pinout table below was last
+finalized:
+
+- 5× individual e-Fuse ``EN`` lines (direct GPIO, not multiplexed — see
+  `Diagnostics, Current Sense, and MCU Pin Budget`_)
+- TCA9534 I2C GPIO expander address/interrupt lines
+- ``SN74LVC1G3157`` current-sense mux select line
+- ``RST_D'OBC`` (input, resets this MCU on OBC's command)
+- ``BLK_D'OBC`` (Timer Input Capture peripheral, reads OBC's block/heartbeat signal)
+- ``BLK_D'BB`` (standard GPIO output, drives this board's block/heartbeat signal to OBC)
+- ``PRE_RESET_WARN`` (output, asserted low briefly as part of the BLOCK handshake — see
+  `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_)
+- ``MCU1_HEALTHY`` square-wave heartbeat output (feeds the discrete detector circuit in the
+  same section, not a digital GPIO read by another device)
+
+None of these have an assigned pin in the table below yet. See `Open Risks & TBDs`_.
 
 Pinout
 ~~~~~~
@@ -850,7 +1588,8 @@ Pinout
      - ``E_FUSE_FAULT``
      - GPIO
      - Digital input
-     - Locked; input mode, no pull — fault flag from e-Fuse
+     - Locked; input mode, no pull — fault flag from e-Fuse. Now shared conceptually across
+       two e-Fuse ICs; see `GPIO / Pin Budget Pressure (Open)`_.
    * - PA11
      - ``FDCAN1_RX``
      - FDCAN1
@@ -896,7 +1635,9 @@ Pinout
      - ``BATT_INT``
      - GPIO (EXTI)
      - ``GPXTI8`` — external interrupt
-     - Rising-edge interrupt, no pull, locked
+     - **Superseded.** ``BATT_INT``/``EPS_INT`` were removed by design decision (issue #156);
+       this pin is free to reassign to one of the new interboard signals above. See
+       `PC104 Bus Connector`_.
    * - PB9
      - ``WD_TIM``
      - GPIO Output
@@ -916,10 +1657,10 @@ Pinout
 .. note::
 
    I2C1 (``PB3``/``PB6``) services the BQ28Z610 fuel gauges; I2C2 (``PA6``/``PB2``) services
-   charger timing. Unlike the legacy STM32F030C8T6 assignment, both peripherals are on
-   dedicated pins with no address-based multiplexing required, and the part's two native
-   FDCAN controllers (``FDCAN1``, ``FDCAN2``) replace the previous "no CAN peripheral"
-   limitation outright — see `CAN Transceiver — TCAN334GDCNT`_.
+   charger timing and now also the TCA9534 e-Fuse diagnostics expander. Both peripherals are on
+   dedicated pins with no address-based multiplexing required for the fuel gauges, and the
+   part's two native FDCAN controllers (``FDCAN1``, ``FDCAN2``) replace the previous "no CAN
+   peripheral" limitation outright — see `CAN Transceiver — TCAN334GDCNT`_.
 
 .. warning::
 
@@ -941,16 +1682,9 @@ speed, output type, peripheral timing) are still **TBD**:
 - ``TIM8_CH1N`` PWM prescaler, period/frequency, initial duty cycle, and dead-time.
 - FDCAN1/FDCAN2 data-phase bit timing (nominal already set at 250 kbps) and bench-test
   operating mode (Normal vs. Loopback).
-- NVIC priority for ``EXTI8`` (``BATT_INT``) relative to other enabled interrupts.
+- NVIC priority for ``EXTI8`` (``BATT_INT``, pending reassignment) relative to other enabled
+  interrupts.
 
-Power Supply (Under Revision)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The MCU takes power from the 3.3 V bus (though perhaps it may be better if sourced from the
-MPPT). A 100 Ω / 100 MHz ferrite bead (FB7) is placed in line on the 3.3 V supply for noise
-filtering. Decoupling capacitors are placed on ``3V3BUS`` and ``3V3A`` rails per STM32
-recommended layout. See `3.3V Input Protection and Filtering`_ for the connector-level
-protection scheme and the current-budget calculation for this rail.
 
 ----
 
@@ -997,73 +1731,7 @@ never full shutdown, even though shutdown draws less current (nA vs. µA range):
 (non-shutdown) state; a 4.7 kΩ series resistor connects that pin to an MCU GPIO for active
 control, limiting current for logic-level safety where switching speed is not critical.
 
-----
 
-3.3V Input Protection and Filtering
--------------------------------------
-
-The 3.3 V rail arrives at this board on a dedicated PC104 pin from the MPPT converter's
-output node (other subsystems have their own separate pins from the same converter, not a
-shared trace). It is a pass-through rail with no local regulation headroom
-(:math:`V_{in} \approx V_{out} = 3.3\text{ V}`).
-
-.. note::
-
-   A full ripple-filter network (series inductor, π-network, shielding) was originally
-   scoped for this rail, then **trimmed** after confirming the load on this board — two
-   LTC6995 timer/watchdog ICs plus the STM32's digital core (``VDDA`` is already isolated by
-   its own dedicated ferrite/local filter, out of scope here) — is digital-logic-tolerant and
-   does not need a board-level ripple spec beyond staying clear of the STM32's UVLO threshold.
-
-**Trimmed scope:**
-
-- A single bulk decoupling capacitor at the connector, sized for local IR-drop/transient
-  buffering only.
-- A transient clamp (TVS, ~3.6 V :math:`V_{RWM}`) at the connector.
-- A series fuse/PTC at the connector.
-
-**Current budget** (validates the "light digital load" assumption above), for the two
-LTC6995HS6-1#TRMPBF instances (deployment timer :math:`R_{SET} = 681\text{k}\Omega`;
-watchdog timer :math:`R_{SET} = 238\text{k}\Omega`) plus their DIV-divider paths, using the
-datasheet's typical supply-current equation:
-
-.. math::
-
-   I_{S(TYP)} \approx V^+ \cdot f_{MASTER} \cdot 7.8\text{pF} + \frac{V^+}{420\text{k}\Omega}
-   + 1.8 \cdot I_{SET} + 50\ \mu\text{A}
-
-.. list-table::
-   :header-rows: 1
-
-   * - Source
-     - Typical
-     - Conservative Worst-Case
-   * - Deployment timer :math:`I_S`
-     - 62.4 µA
-     - —
-   * - Watchdog timer :math:`I_S`
-     - 70.8 µA
-     - —
-   * - DIV divider currents (both)
-     - 4.5 µA
-     - —
-   * - **Total (LTC6995 ×2 + dividers)**
-     - **~137.7 µA**
-     - **~264.5 µA** (loose bound — datasheet's guaranteed max :math:`I_S` at
-       :math:`V^+ = 5.5\text{V}` used as the loosest applicable tabulated ceiling; true
-       guaranteed max at 3.3 V is not directly tabulated)
-   * - STM32U3B5CIT6 digital core contribution
-     - **Pending** — see `Open Risks & TBDs`_
-     - Pending
-
-The ~12 µF bulk/filter capacitance draws zero steady-state DC current once charged and is
-excluded from this calculation as an inrush item, not a steady-state one.
-
-**Open items:** confirm the STM32 UVLO threshold holds with margin against a worst-case rail
-dip under a simulated cross-subsystem load step on the same MPPT converter node; audit
-cross-board I2C nets for back-powering risk through MCU ESD diodes if this rail is absent
-while the battery bus is live; bench-verify TVS/fuse hold under a simulated connector fault
-event.
 
 ----
 
@@ -1074,74 +1742,27 @@ The PC104 stackthrough connector (``J?``) connects the EPS Battery Board to the 
 satellite subsystems. It carries both regulated and unregulated voltage buses, I2C telemetry,
 and control signals.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 20 25 15 40
-
-   * - Net / Signal
-     - Connector Side
-     - Direction
-     - Notes
-   * - ``BATT_INT``
-     - H1 (female / top)
-     - Out
-     - GPIO interrupt from BMS MCU (PB8/EXTI8) to OBC — see resolved definition below.
-   * - ``EPS_INT``
-     - H1
-     - In
-     - Hard-reset request from OBC into the ``RST`` input of the LTC6995 watchdog timer — see
-       resolved definition below.
-   * - ``5VBUS``
-     - H1 / H2
-     - Out
-     - Regulated 5 V bus
-   * - ``3V3BUS``
-     - H1 / H2
-     - In
-     - Regulated 3.3 V rail sourced from the MPPT converter — see
-       `3.3V Input Protection and Filtering`_
-   * - ``5V_USB_CHG``
-     - H1
-     - In
-     - USB charge input
-   * - ``E_FUSE_COMMS``, ``E_FUSE_SBAND``, ``E_FUSE_OBC``, ``E_FUSE_PAYLOAD``
-     - H1 / H2
-     - Out
-     - Four split, individually current-limited raw battery voltage feeds from the
-       TPS7H2140-SEP e-Fuse (see `Channel Topology`_). Replaces the former ``PCM_IN``/
-       ``BCR_OUT`` nets, which no longer apply now that the PCM function has moved to the
-       MPPT/Power Distribution Board.
-   * - ``I2C_SDA``, ``I2C_SCK``
-     - H1
-     - Bidirectional
-     - I2C to communicate with rest of satellite
-   * - ``FDCAN1``, ``FDCAN2`` (CAN-H/CAN-L pairs)
-     - H1 / H2
-     - Bidirectional
-     - Primary/redundant CAN bus to OBC via the TCAN334GDCNT transceivers.
-   * - GND
-     - H1 / H2
-     - —
-     - Multiple ground pins distributed across connector
 
 .. note::
 
-   **Resolved (previously open): EPS_INT / BATT_INT net definitions.**
+   **Superseded (2026-09-04): ``EPS_INT`` and ``BATT_INT`` removed.** These two discrete
+   interrupt nets — previously resolved (issue #141) as, respectively, an OBC-driven hard-reset
+   line into the watchdog timer's ``RST`` input, and a BMS-MCU-driven interrupt notifying OBC of
+   a battery emergency — were deliberately **removed from the design** (issue #156) rather than
+   kept. Reasoning:
 
-   - ``EPS_INT`` connects to the PC104 and to the ``RST`` input of the LTC6995 watchdog timer.
-     Pulling it high immediately stops the watchdog's internal oscillator, clears its counter
-     dividers, and truncates its output pulse. Because it is driven from the PC104 side (OBC),
-     not from the BMS MCU, ultimate hard-reset authority for this board's watchdog rests with
-     OBC — consistent with OBC's higher position in the subsystem hierarchy (if OBC itself
-     dies, the whole satellite is in a "zombie" state regardless of what this board can do).
-   - ``BATT_INT`` connects to the BMS MCU (``PB8``/``EXTI8`` on the current STM32U3B5CIT6
-     assignment) and to PC104. Deductive reasoning (no legacy firmware available to confirm
-     directly) points to this being an **output** from the BMS MCU into an OBC external
-     interrupt — signalling OBC to pause its main loop and execute an emergency payload-
-     shedding sequence, enter safe/survival mode, or isolate the battery. A plain GPIO
-     interrupt is adequate for this; PWM-encoded signalling was considered but is unnecessary
-     if the only purpose is to flag "power conservation mode" conditions.
-   - **Still open:** final confirmation of both interpretations with the OBC subteam.
+   - Each discrete line costs a connector pin, routing trace, and ESD protection array, and a
+     board-to-board harness run acts as an antenna: EMI or single-event transients can flood
+     the receiving MCU with spurious interrupt requests, and in an RTOS this risks task
+     starvation or deadlock — a concern raised directly in review.
+   - Interrupts cause non-determinism issues in the RTOS firmware. The solution for cross-board interrupts would require a much more involved firmware architecture just to mitigate potential critical timing issues.
+   - Dual-redundant CAN buses and hardware I2C bus buffers already provide bus-level fault
+     tolerance without extra discrete wiring.
+
+   **Replacement architecture:** the EPS/BMS now acts as an autonomous secondary supervisor for
+   OBC, power-cycling OBC's e-Fuse rail if CAN heartbeats stop arriving, backed by a discrete
+   ``RST_D'OBC``/``BLK_D'OBC``/``BLK_D'BB`` handshake for cases CAN itself cannot diagnose. See
+   `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_ for the full design.
 
    Approximate maximum current per connector: ~3 A (needs verification against the
    NASA-STD-8739.4 / IPC-2221B derating applied for the 5 A continuous cell-protection feed —
@@ -1209,11 +1830,8 @@ of the DC-DC converter to prevent overcurrent as the battery voltage rises.
 The circuit holds the output at a constant voltage while current tapers naturally to near-zero
 as the battery approaches full charge.
 
-
-
-
 Emergency / Safe Mode Power Strategy (Under Revision)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In SOS/safe mode, the following subsystems must remain operational (per advisor recommendation):
 
@@ -1223,8 +1841,287 @@ In SOS/safe mode, the following subsystems must remain operational (per advisor 
 
 Combined power requirement in SOS mode: ~17 W. This figure was determined in April 2025, and may be subject to change.
 
-All other subsystems should be commandably shed. Inrush current for each subsystem must be
-accounted for when designing the LCL trip thresholds.
+
+----
+
+Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture
+----------------------------------------------------------------------
+
+.. note::
+
+   **New section (2026-09-05 through 2026-09-08, issues #219, #220, #221, #223).** This
+   architecture replaces the retired ``EPS_INT``/``BATT_INT`` nets (see `PC104 Bus Connector`_)
+   with a purpose-built set of mechanisms letting the Battery Board's MCU (MCU1) and OBC's MCU
+   (MCU2) each detect the other's failure and, where appropriate, take corrective action —
+   including letting OBC take direct control of the e-Fuse outputs if MCU1 or the CAN bus is
+   unavailable.
+
+Failure Detection: Three Independent Signals
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Battery Board can assess OBC's health via three largely-independent channels:
+
+1. **CAN heartbeat** — presence/absence of OBC's periodic "alive" message on the CAN bus (see
+   ``OBC_ALIVE`` in `CAN Telemetry`_).
+2. **The BLOCK handshake** — a dedicated GPIO-level protocol (below), independent of CAN.
+3. **Current draw analysis** — comparing OBC's actual current draw against its expected
+   operating current (e.g. ~150 mA nominal) via the e-Fuse's per-rail current telemetry; a
+   reading far below or above expectation is itself diagnostic.
+
+The design explicitly notes that combining current-draw analysis with the other two checks
+introduces a harder verification problem than a simple two-signal (CAN + BLOCK) pass/fail
+check — a current reading needs at least a third independent corroborating signal or
+statistical treatment before it can be trusted on its own, since a "strange" current reading
+could equally indicate a faulty sensor rather than a faulted OBC.
+
+The BLOCK Handshake Protocol
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Three dedicated GPIO signals implement a protocol that is deliberately resistant to being
+spoofed by a radiation-induced Single-Event Transient (SET), which can only hold a trace high
+or low for nanoseconds to microseconds — far too briefly to satisfy the protocol's timing
+windows:
+
+.. list-table:: BLOCK Handshake Signals
+   :header-rows: 1
+   :widths: 20 45 35
+
+   * - Signal
+     - Description
+     - Peripheral Type
+   * - ``RST_D'OBC``
+     - Not an interrupt — a plain active-high GPIO that lets OBC reset MCU1.
+     - Standard GPIO output (push-pull/open-drain) on OBC; reset input on MCU1 (see
+       `MCU Supervisor — TPS3823-25DBVR`_ for the DTC013UB-based receive circuit).
+   * - ``BLK_D'OBC``
+     - Block signal: OBC writes, Battery Board reads.
+     - Timer input capture on MCU1; standard GPIO output on OBC.
+   * - ``BLK_D'BB``
+     - Block signal: Battery Board writes, OBC reads.
+     - Timer input capture on OBC; standard GPIO output on MCU1.
+
+**Protocol (Battery Board checking OBC):**
+
+1. **Precondition:** MCU1 asserts ``PRE_RESET_WARN`` HIGH (idle) and reads ``BLK_D'OBC``. If
+   it is already HIGH, that in itself is a fault (MCU2's line is stuck high) and MCU1 proceeds
+   directly to reset. If LOW, the line is clear and the test proceeds.
+2. **Trigger:** MCU1 drops ``PRE_RESET_WARN`` LOW for 5 ms.
+3. **Postcondition:** MCU2 must pull ``BLK_D'OBC`` HIGH and hold it continuously HIGH for at
+   least 10 ms within the response window (~5 ms wait) for MCU1 to treat MCU2 as alive; a
+   failure to transition correctly is treated as MCU2 being dead, and MCU1 executes a power
+   cycle of OBC's e-Fuse rail.
+
+A low-pass filter on the ``BLK`` GPIO lines filters out sub-millisecond radiation-induced
+spikes so a heavy-ion SET cannot be misread as a valid 10 ms response. The same protocol runs
+in the opposite direction so that OBC can decide whether to reset MCU1 via ``RST_D'OBC`` if it
+concludes MCU1 has failed.
+
+OBC E-Fuse Privilege Levels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Combining the CAN-bus state, the BLOCK handshake result, and OBC's measured current draw
+yields twelve distinct diagnoses, each mapped to a specific e-Fuse control policy for OBC:
+
+.. list-table:: OBC E-Fuse Privilege Matrix
+   :header-rows: 1
+   :widths: 5 10 12 12 22 14 25
+
+   * - Case
+     - CAN Bus
+     - BLK Handshake
+     - Current Draw
+     - System Diagnosis
+     - OBC Privilege
+     - Action / Policy
+   * - 1
+     - PASS
+     - PASS
+     - Normal
+     - Fully healthy
+     - Full control
+     - Normal operation.
+   * - 2
+     - PASS
+     - PASS
+     - High (SEL)
+     - Downstream latchup/short
+     - Restricted (local only)
+     - OBC software trips & cycles the specific downstream e-Fuse rail; global state changes
+       blocked until cleared.
+   * - 3
+     - PASS
+     - PASS
+     - Low (zero)
+     - Downstream open-circuit
+     - Full control (logged)
+     - OBC investigates the subsystem rail; main power bus maintained.
+   * - 4
+     - PASS
+     - FAIL
+     - Normal
+     - Timer/GPIO peripheral failure
+     - Revoked
+     - Maintain current e-Fuse states; restrict changes; OBC resets its GPIO peripheral
+       internally (MCU1 also signals MCU2 to reset that pin); MCU1 does not power-cycle.
+   * - 5
+     - PASS
+     - FAIL
+     - High (SEL)
+     - Partial latchup
+     - Revoked
+     - MCU1 initiates one power cycle; if unresolved, raise a warning flag.
+   * - 6
+     - PASS
+     - FAIL
+     - Low (zero)
+     - Open-circuit/GPIO rail failure
+     - Revoked
+     - Investigate the trace; maintain main power bus; no power cycle.
+   * - 7
+     - FAIL
+     - PASS
+     - Normal
+     - CAN controller/transceiver freeze
+     - Revoked
+     - Maintain e-Fuse states; toggle the local CAN transceiver power switch if possible.
+   * - 8
+     - FAIL
+     - PASS
+     - High (SEL)
+     - CAN transceiver latchup + high current
+     - Revoked
+     - Power-cycle the CAN transceiver rail immediately if possible.
+   * - 9
+     - FAIL
+     - PASS
+     - Low (zero)
+     - CAN bus disconnect/power loss
+     - Revoked
+     - Flag the bus failure/open circuit.
+   * - 10
+     - FAIL
+     - FAIL
+     - Normal
+     - Core CPU lockup (no latchup)
+     - Revoked
+     - Critical: revoke e-Fuses; MCU1 power-cycles OBC.
+   * - 11
+     - FAIL
+     - FAIL
+     - High (SEL)
+     - Hard core latchup (thermal hazard)
+     - Revoked
+     - Emergency power cycle; if current stays high with no signals, cut power.
+   * - 12
+     - FAIL
+     - FAIL
+     - Low (zero)
+     - Unpowered / hard brownout
+     - Revoked
+     - Revoke e-Fuses; execute the power-cycle reset sequence.
+
+In normal operation OBC does not need e-Fuse authority at all — MCU1 retains it. OBC only needs
+to take over if *both* CAN buses are unusable or MCU1 itself is dead.
+
+**Delegating authority when MCU1's own command has no effect.** A separate failure mode is
+possible even while MCU1, CAN, and OBC are all nominally healthy: MCU1 issues a disable command
+to an e-Fuse rail, but current keeps flowing — for example because one ideal diode controlling the eFuse's EN pin has failed
+short while OBC is independently holding that same node high, forcing the other ideal diode
+into reverse and making MCU1's local command ineffective. MCU1 detects this by polling the
+e-Fuse's current telemetry after issuing the disable command:
+
+- If current continues to flow, MCU1 hands authority for that rail to OBC, which immediately
+  re-asserts the disable command.
+- If current then drops to zero, one ideal diode had failed short but the other remains
+  functional and the system survives on the working diode.
+- If current remains high even after OBC's attempt, the fault is downstream in the e-Fuse
+  itself, or both ideal diodes have failed; if that rail is essential, the two MCUs coordinate
+  over CAN so their commanded voltage levels match rather than fight each other.
+
+MCU1_HEALTHY Signal Detector
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A discrete analog circuit — chosen over an IC specifically because discrete passives are far
+less vulnerable to a single radiation burst taking out one part — converts an AC heartbeat
+generated by MCU1's own firmware into a DC enable signal for a **MAX40200** ideal diode, which
+in turn gates whether MCU1 or OBC has authority over the shared e-Fuse ``EN`` node for a given
+rail:
+
+- MCU1 outputs a 50%-duty-cycle square wave from within the same execution thread being
+  monitored (so a genuine CPU lockup silences it).
+- The square wave is rectified through a dual **BAT54S** Schottky pair (2 × :math:`V_F` ≈
+  0.3 V drop each) and filtered through a **10 kΩ** bleed resistor with a **2.2 µF** filter
+  capacitor (derated up to ~4.7 µF for tolerance/temperature margin in the actual BOM), giving
+  a nominal DC level of 3.3 V − 0.6 V = 2.7 V with ~0.2 V of ripple.
+- Solving for the discharge time constant against the target ripple gives a nominal heartbeat
+  frequency of **~205 Hz**.
+- If MCU1 freezes (0 Hz output), the filter capacitor discharges through the bleed resistor
+  with a time constant :math:`\tau = R_L C_2 = 15\text{k}\Omega \times 2.2\ \mu\text{F}
+  \approx 33\text{ ms}`; solving :math:`V(t) = V_0 e^{-t/\tau}` from the nominal 2.7 V down to
+  the MAX40200's 0.6 V disable threshold gives a **time-to-disable of ~49.6 ms** after MCU1
+  stops toggling — i.e. OBC can gain e-Fuse authority within about 50 ms of MCU1 going silent.
+- **MAX40200** was selected as the ideal-diode part specifically because its enable pin can
+  block current from either side and has a low 1.2 V logic-HIGH threshold, which lets the
+  detector skip an extra BJT buffer stage that would otherwise be needed to boost the rectified
+  signal up to a full 3.3 V logic level — saving components and an additional failure point.
+
+**Topology choice: ideal diode over mux or logic-gate OR-ing.** Three approaches for letting
+either MCU drive a shared e-Fuse ``EN`` node were compared:
+
+.. list-table:: EN-Node Arbitration Options
+   :header-rows: 1
+   :widths: 30 40 30
+
+   * - Approach
+     - Risk
+     - Severity
+   * - Decentralized mini-mux (ISL43210/3157-class)
+     - High single-point risk per rail — a silicon short or latch-up inside the mux locks or
+       grounds that channel, disabling *both* MCUs' control of it.
+     - Medium (localized to 1 of 5 rails)
+   * - Active OR-ing / ideal diodes (selected)
+     - Lowest overall risk; more passive parts means a slightly higher passive-assembly
+       failure rate, but no single active IC failure can take the rail down.
+     - Very low — a redundant path always remains
+   * - Dual logic gates + series diodes
+     - Diode forward-voltage drop (300–500 mV) reduces logic drive margin, risking erratic
+       e-Fuse triggering at temperature extremes.
+     - Medium-high
+
+**What happens if an ideal diode itself fails.** The worst case is the input voltage shorting
+and holding the downstream FET active; this is not immediately destructive if both MCUs remain
+functional, since they must simply diagnose the broken diode and delegate control of that line
+to whichever MCU's command path the broken diode has left intact (per the failover procedure
+above). For the MCU1_HEALTHY signal specifically, forcing the node to a false logic-LOW would
+require sinking more current than MCU1's own GPIO output buffer can source (~20–25 mA); because
+the far side of the MAX40200 sees only another 3.3 V GPIO or the e-Fuse's 10 kΩ pull-down, there
+is no strong path to ground available even if the ideal diode's internal comparator itself is
+damaged by radiation — a heavy-ion strike is far more likely to break down the diode's FET
+drain-source junction than its comparator, and even a comparator fault would only lock the
+signal high or low (a state the MCUs can work around), not force a short.
+
+MOSFET Redundancy (General Policy)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+   Issue #223, closed 2026-09-07, is a **board-wide hardening policy** distinct from (though
+   philosophically related to) the bespoke 8-transistor array adopted specifically for the
+   low-side inhibit (`Low-Side Inhibit — 8× BUK9Y4R8-60E,115 (Redundant MOSFET Array)`_). Where
+   this policy and the low-side inhibit's own analysis apply to the same physical switch, the
+   more detailed low-side-inhibit-specific analysis should be treated as authoritative; where a
+   MOSFET switch elsewhere in the design has not yet had its own bespoke redundancy analysis,
+   this general policy is the current baseline.
+
+Radiation-induced MOSFET failures are most commonly *short* failures (thermal overload, ESD,
+Single-Event Gate Rupture, or electrical overstress melting the internal silicon or punching a
+filament through the gate oxide or drain-source junction). Adding a second MOSFET in series
+after any single critical MOSFET switch substantially reduces the probability that a single
+radiation-induced short takes down that switch. The trade-off is that each additional series
+MOSFET linearly increases both the open-circuit failure probability and :math:`R_{DS(on)}`
+(and therefore heat). **Two MOSFETs in series is the current baseline** for switches not
+otherwise covered by a bespoke analysis; a thermal analysis and the first PCB prototype should
+be completed before deciding whether to add more.
 
 ----
 
@@ -1239,18 +2136,25 @@ Interfaces
      - Type
      - Notes
    * - Battery pack output
-     - Reverse-blocking diode → E-Fuse (TPS7H2140-SEP) ``IN``
+     - Reverse-blocking diode → E-Fuse ``IN`` (×2 instances)
      - Power
      - Main battery bus. 2× parallel 1N5822U ESCC Schottky diodes provide series
-       reverse-current blocking (TI Method 1) ahead of the e-Fuse. MOSFETs in the main path
+       reverse-current blocking (TI Method 1) ahead of each e-Fuse. MOSFETs in the main path
        must be rated ≥ 2× battery voltage due to spikes from Electrodynamic Tether deployment.
-   * - E-Fuse split outputs
-     - ``E_FUSE_COMMS`` / ``E_FUSE_SBAND`` / ``E_FUSE_OBC`` / ``E_FUSE_PAYLOAD`` → PC104 bus
+   * - Pack-level fuses
+     - Battery pack positive output header (×2, one per 2S2P pack)
      - Power
-     - Four independently current-limited (~1.36 A each) raw battery voltage feeds. Replaces
-       the former ``PCM_IN``/``BCR_OUT`` path now that PCM has moved to the MPPT/PDB.
+     - Asymmetric time-lag ceramic fuses (30 A) replacing the earlier per-cell PPTC scheme —
+       see `Pack-Level Fusing`_.
+   * - E-Fuse split outputs
+     - ``E_FUSE_COMMS`` / ``E_FUSE_SBAND`` / ``E_FUSE_OBC`` / ``E_FUSE_PAYLOAD`` /
+       ``E_FUSE_MPPT`` → PC104 bus
+     - Power
+     - Five independently current-limited raw battery voltage feeds built from 8 total
+       channels across two e-Fuse instances. Replaces the former ``PCM_IN``/``BCR_OUT`` path
+       now that PCM has moved to the MPPT/PDB.
    * - I2C1 / I2C2
-     - STM32 ↔ BQ28Z610 ×2 (fuel gauges), charger timing
+     - STM32 ↔ BQ28Z610 ×2 (fuel gauges), charger timing, TCA9534 e-Fuse diagnostics expander
      - Data
      - Internal telemetry bus. Zener ESD protection on both lines.
    * - FDCAN1 / FDCAN2
@@ -1261,16 +2165,19 @@ Interfaces
    * - PC104 bus
      - OBC, ADCS, COMMS, and other subsystems
      - Power + Data
-     - Stackthrough connector; carries the split e-Fuse feeds, I2C, and CAN telemetry.
+     - Stackthrough connector; carries the split e-Fuse feeds, I2C, CAN telemetry, and the
+       interboard reset/handshake signals below.
    * - ``EN_D1``
-     - E-Fuse ``EN1-4`` (via SN54SC6T06-SEP inverter)
+     - E-Fuse ``EN`` lines (via SN54SC6T06-SEP inverter), one inverter package per e-Fuse
      - GPIO
-     - ANDed output of watchdog timer + deployment timer. Active high; inverted before the
-       e-Fuse's active-low enable sense.
+     - Hardware launch-inhibit signal, ANDed (pending gate-topology confirmation — see
+       `Open Risks & TBDs`_) from watchdog timer + deployment timer. Coexists with 5
+       individual per-rail MCU ``EN`` GPIOs added for firmware fault handling; the exact way
+       these combine at the schematic level is not yet finalized.
    * - ``EN_D3``
-     - Low-side inhibit (PACK_N switch)
+     - Low-side inhibit gate driver enable (TPSI3050-Q1)
      - GPIO
-     - Deployment timer output. Enables ground return path post-deployment.
+     - Deployment timer output. Enables the 8-transistor low-side inhibit array post-deployment.
    * - Battery thermistors
      - STM32 PA6 (``BAT-TEMP``)
      - Analog
@@ -1285,9 +2192,22 @@ Interfaces
      - Independent hardware Break-Input fault isolation per heater channel — see
        `Battery Heater PWM Timer Selection`_.
    * - E-Fuse diagnostics
-     - ``DIAG_EN``/``CS``/``SEL``/``SEH`` → STM32 GPIO/ADC
+     - ``DIAG_EN``/``CS``/``SEL``/``SEH`` → TCA9534 (SEL/SEH/FAULT) / SN74LVC1G3157 (CS) →
+       STM32 GPIO/I2C/ADC
      - Data
-     - Per-channel fault status and current sense, relayed to OBC over CAN.
+     - Per-rail fault status and current sense, relayed to OBC over CAN. See
+       `Diagnostics, Current Sense, and MCU Pin Budget`_.
+   * - ``RST_D'OBC`` / ``BLK_D'OBC`` / ``BLK_D'BB``
+     - PC104 ↔ OBC
+     - GPIO
+     - Interboard reset and health-handshake signals — see
+       `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_. Replaces the
+       retired ``EPS_INT``/``BATT_INT`` nets.
+   * - ``MCU1_HEALTHY``
+     - Discrete rectifier/filter network → MAX40200 ideal-diode ``EN``
+     - Analog / GPIO
+     - Lets OBC take over e-Fuse ``EN`` authority if MCU1's heartbeat stops. See
+       `MCU1_HEALTHY Signal Detector`_.
 
 ----
 
@@ -1304,11 +2224,20 @@ communication in the electromagnetically noisy switching environment:
 - **10 Ω – 47 Ω series gate resistors** on power MOSFETs to damp switching-induced ringing.
 - **Ferrite bead** (100 Ω @ 100 MHz) on the MCU 3.3 V supply rail.
 - **Decoupling capacitors** on all IC supply pins per each IC's datasheet recommendation.
-- **1 µF flex-termination MLCC + reverse Schottky (1N5822U)** on each e-Fuse channel output
+- **1 µF flex-termination MLCC + JANTXV 1N5806/1N5806U rectifier** on each e-Fuse rail output
   to clamp positive/negative inductive transients from fault trips, load switching, and
-  cosmic-ray SETs — see `Output Transient Protection`_.
+  cosmic-ray SETs — see `Output Transient Protection`_ (the negative-spike clamp diode was
+  changed from a 1N5822U Schottky to the 1N5806 on 2026-09-06 for better high-temperature
+  leakage and TID/SEE characterization).
 - **4.7 kΩ series isolation resistors** on all e-Fuse digital control lines
-  (``EN1-4``, ``SEL``, ``SEH``, ``DIAG_EN``) to shield the MCU from negative transient spikes.
+  (``EN`` ×5, ``SEL``, ``SEH``, ``DIAG_EN``) to shield the MCU from negative transient spikes.
+- **Low-pass filters on the ``BLK_D'OBC``/``BLK_D'BB`` handshake lines**, sized to reject
+  sub-millisecond radiation-induced SET spikes while passing the protocol's genuine 10 ms
+  hold states — see `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_.
+- **AC-coupled (1 µF high-pass) reset lines** on both the local supervisor→``NRST`` path and
+  the ``RST_D'OBC``→``NRST`` path, each with its own dual-Schottky clamp, so that neither a
+  stuck supervisor output nor a latched-up OBC can hold this board's MCU in reset indefinitely
+  — see `MCU Supervisor — TPS3823-25DBVR`_.
 
 .. note::
 
@@ -1323,6 +2252,15 @@ CAN Telemetry
 Now that the MCU has native dual FDCAN (see `Microcontroller — STM32U3B5CIT6`_), the following
 data dictionary and polling-rate plan is tentative (2026-08-29) and subject to change with the
 OBC subteam.
+
+.. note::
+
+   The interboard reset/health-check signals introduced in
+   `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_ (``RST_D'OBC``,
+   ``BLK_D'OBC``, ``BLK_D'BB``, ``MCU1_HEALTHY``) are discrete hardware GPIO/analog signals,
+   not CAN telemetry items, and are intentionally kept off this bus so they still function if
+   CAN itself is one of the things that has failed. ``OBC_ALIVE`` below remains the CAN-side
+   heartbeat that the BLOCK handshake backs up.
 
 **Battery telemetry** (per string, ×2 for string A / string B — 16 signals total):
 
@@ -1366,7 +2304,8 @@ OBC subteam.
      - 0.1–1 Hz
      - SoC changes continuously but slowly.
 
-**Battery voltage distribution telemetry** (5 signals):
+**Battery voltage distribution telemetry** (5 signals; rail count now reflects the 5-rail
+e-Fuse architecture — MPPT was not present when this table was first drafted):
 
 .. list-table::
    :header-rows: 1
@@ -1390,7 +2329,60 @@ OBC subteam.
      - Current telemetry for the Payload feed
      - 1–10 Hz (+ on-change for trip events)
 
-Combined, this gives **21 CAN commands** total across both tables.
+.. warning::
+
+   ``E_FUSE_MPPT`` is not yet in this table even though it is now a physical rail (see
+   `Channel Topology`_) — the CAN data dictionary needs a sixth telemetry row added. See
+   `Open Risks & TBDs`_.
+
+Combined, this gives **21 CAN commands** total across both tables (pending the
+``E_FUSE_MPPT`` addition above).
+
+----
+
+E-Fuse Fault Handling (Firmware)
+----------------------------------
+
+.. note::
+
+   **New section (issue #202, open).** The TPS7H2140-SEP/TPS4H160-Q1 has no native auto-retry
+   capability, so this behaviour is implemented entirely in firmware.
+
+Current Sampling for Paralleled Rails
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Because MPPT and Payload each combine multiple 1.35 A channels onto one rail (see
+`Channel Topology`_), reading a single rail's total current means summing multiple ``CS``
+mux samples rather than reading one value directly:
+
+- **MPPT** (2 channels): set ``SEH=1, SEL=0`` to sample channel 3's current, then
+  ``SEH=1, SEL=1`` to sample channel 4's current; sum both ADC readings for total
+  :math:`I_{LOAD}`.
+- **Payload** (3 channels): sampling sequence not yet defined (**TBD**).
+
+Auto-Retry Latching Sequence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Rather than try to determine which specific rail faulted from within the interrupt itself
+(judged too slow), the design disables everything first and diagnoses afterward:
+
+1. **ISR (hardware interrupt, < 10 µs):**
+
+   a. Drive all ``EN`` GPIOs LOW immediately (both e-Fuse instances, all 5 rails).
+   b. Mask the ``/FAULT`` pin's EXTI line, to prevent the ISR from re-firing on itself while
+      diagnosis is in progress.
+   c. Set a ``Diagnose_Required`` flag and exit the ISR.
+
+2. **Sequential rail ping (main loop / task routine):** iterate through rails 1–5:
+
+   a. Drive that rail's ``EN`` HIGH.
+   b. Wait 100 µs.
+   c. Read the ``/FAULT`` pin. If LOW (shorted), immediately drive that rail's ``EN`` back LOW
+      and start a 5.0 s cooldown timer for it. If HIGH (healthy), leave that rail's ``EN`` HIGH.
+
+3. **Resume:** unmask and clear the ``/FAULT`` EXTI interrupt; normal operation resumes with
+   healthy rails ON and the shorted rail held OFF for the 5 s cooldown, after which the
+   sequence can repeat if the fault persists.
 
 ----
 
@@ -1406,47 +2398,79 @@ Component Change Log
    * - BQ2970 / BQ29723 (1S cell protection ×4)
      - BQ28Z610 (2S protection ×2)
      - 2S IC integrates protection, balancing, IV monitoring, and temperature sensing.
-       Eliminates floating ground risk and stacked-1S limitations. See `Cell-Level Protection`_
-       for full rationale.
+       Eliminates floating ground risk and stacked-1S limitations.
    * - STM32F030F4P6
      - STM32F030C8T6 → **STM32U3B5CIT6**
      - F4P6 → C8T6: two BQ28Z610 ICs share I2C address 0x55; the F4P6 only has one I2C
        peripheral. C8T6 → U3B5CIT6: OBC requires a redundant dual-CAN bus, which the C8T6
-       (and the whole F0 family) completely lacks. See `Microcontroller — STM32U3B5CIT6`_.
-   * - No per-cell fusing
-     - PPTC fuses (one per cell, trip at 4.5 A)
-     - Isolate individual shorted cells without taking down parallel bank.
+       (and the whole F0 family) completely lacks.
+   * - Per-cell PPTC fusing (4× at 4.5 A)
+     - **Per-pack asymmetric time-lag ceramic fuses** (2× 30 A: Littelfuse 0456030 / Eaton
+       CB61F30A)
+     - PPTC resistance near the cells risks feeding heat back into the pack in vacuum and can
+       false-trip under on-orbit temperature swings; a single pack-level fuse per 2S2P string
+       avoids the balancer/gas-gauge measurement error a per-branch fuse would add. See
+       `Pack-Level Fusing`_.
    * - No E-Fuse
-     - TPS259472ARPWR → **TPS7H2140-SEP (PTPS7H2140PWPTSEP)**
-     - COTS device replaced with a 30 krad(Si) TID / SEL-immune SEP-grade part; also absorbs
-       the TPS24750 high-side-inhibit role. See
-       `E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)`_.
+     - TPS259472ARPWR → TPS7H2140-SEP → **TPS4H160-Q1 (prototype), TPS7H2140-SEP (baseline)**
+     - COTS device replaced with a rad-hard SEP-grade part; automotive-grade TPS4H160-Q1
+       substituted for the first prototype run on cost alone (~$5 vs. ~$1000/unit), pending a
+       final flight-part decision. Also absorbs the TPS24750 high-side-inhibit role.
+   * - Single e-Fuse, 4 channels (one per subsystem)
+     - **Two e-Fuse instances, 8 channels allocated by rail current need**
+     - A fifth raw-battery-voltage rail (MPPT, ~2–3 A) was identified that a single
+       quad-channel e-Fuse cannot supply alongside COMMS/S-band/OBC/Payload. See
+       `Channel Topology`_.
+   * - E-Fuse output negative-spike clamp: 1N5822U Schottky
+     - **JANTXV 1N5806/1N5806U ultra-fast silicon rectifier**
+     - Better high-temperature reverse-leakage behaviour and characterized TID/SEE
+       performance versus a commercial Schottky; the e-Fuse's own internal active clamp makes
+       the Schottky's lower :math:`V_F` unnecessary. See `Output Transient Protection`_.
    * - TPS24750 (high-side inhibit)
-     - Removed — role absorbed by TPS7H2140-SEP
-     - COTS, non-radiation-qualified part; redundant once the new e-Fuse's ``EN`` gating
-       satisfies the same launch-inhibit requirement.
+     - Removed — role absorbed by the e-Fuse
+     - COTS, non-radiation-qualified part; redundant once the e-Fuse's ``EN`` gating satisfies
+       the same launch-inhibit requirement.
    * - No ideal diodes
      - LM74800-Q1 (×2)
      - Prevent back-feeding between the two 2S2P strings.
    * - No reverse-current blocking at pack output
      - 2× parallel 1N5822U (ESCC Schottky)
-     - Series blocking diode (TI Method 1) ahead of the e-Fuse ``IN`` pin; sized for 6 A
+     - Series blocking diode (TI Method 1) ahead of each e-Fuse ``IN`` pin; sized for 6 A
        against the 34.8 W July 2026 power budget.
-   * - NTJD1155L (low-side inhibit)
-     - Under review (FDC6318P or 2× discrete MOSFETs)
-     - Original device cannot handle the full battery return current (max 1.3 A rating).
+   * - NTJD1155L (low-side inhibit, ±1.3 A max)
+     - **8× BUK9Y4R8-60E,115 automotive MOSFETs** (redundant series/parallel array) + TPSI3050-Q1
+       capacitive-isolated gate driver
+     - Original device could not carry the ~10–12 A full battery discharge current. A GaN
+       candidate (EPC2204) was also evaluated and rejected in favor of the silicon MOSFET. See
+       `Low-Side Inhibit — 8× BUK9Y4R8-60E,115 (Redundant MOSFET Array)`_.
    * - No series cell balancing IC
      - BQ28Z610 (integrated passive balancing)
      - Prevents individual cell overcharge; extends pack lifespan.
    * - No MCU supervisor
-     - TPS3823-25DBVR
-     - Hardware reset/brownout supervision independent of firmware; coordinated with the
-       STM32's internal BOR0 (~1.8–2.1 V) so the external part always trips first.
+     - TPS3823-25DBVR, later given an AC-coupled reset network (1 µF cap + dual Schottky +
+       100 Ω resistor)
+     - Hardware reset/brownout supervision independent of firmware; the reset network addition
+       prevents a faulted supervisor from holding the MCU in permanent reset. See
+       `MCU Supervisor — TPS3823-25DBVR`_.
    * - No CAN transceiver
      - TCAN334GDCNT (×2)
      - Required once the MCU gained native dual FDCAN; converts digital TX/RX to
        differential CAN-H/CAN-L for the primary/redundant OBC bus.
-
+   * - ``EPS_INT`` / ``BATT_INT`` discrete interrupt lines
+     - **Removed** — replaced by an autonomous CAN-heartbeat-timeout supervisor role for the
+       EPS, plus ``RST_D'OBC``/``BLK_D'OBC``/``BLK_D'BB`` handshake signals
+     - The old lines did not give the EPS actual autonomous authority to recover OBC from a
+       Single-Event Latchup, and long discrete board-to-board lines raise EMI/RTOS-determinism
+       concerns. See `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_.
+   * - No OBC/MCU1 e-Fuse failover path
+     - MAX40200 ideal-diode arbitration + MCU1_HEALTHY discrete heartbeat detector
+     - Lets OBC take over e-Fuse ``EN`` control within ~50 ms if MCU1's heartbeat stops, without
+       a single active IC failure being able to take a whole rail down.
+   * - e-Fuse diagnostics: implied direct MCU GPIO wiring
+     - TCA9534 I2C GPIO expander (SEL/SEH/FAULT) + SN74LVC1G3157 analog mux (CS)
+     - Two e-Fuse ICs' worth of diagnostic signals exceed the MCU's remaining free-pin budget;
+       the 5 rail ``EN`` lines remain direct GPIOs (safety-critical), while
+       lower-consequence diagnostics are multiplexed.
 
 ----
 
@@ -1459,10 +2483,58 @@ Open Risks & TBDs
    * - Risk / TBD
      - Owner
      - Target Resolution
-   * - Low-side inhibit (NTJD1155L) replacement not finalised — FDC6318P vs. 2× discrete
-       MOSFETs. Verify current rating, package size, and gate drive requirements.
+   * - **Automotive-vs-space-grade e-Fuse.** The TPS4H160-Q1 is a cost-driven prototype
+       substitute for the rad-hard TPS7H2140-SEP; confirm whether the flight unit reverts to
+       the space-grade part.
      - TBD
-     - Before PCB layout freeze
+     - Schematic review
+   * - **MCU pin assignment for new signals.** The 5 e-Fuse ``EN`` lines, TCA9534
+       address/interrupt pins, ``SN74LVC1G3157`` select line, ``RST_D'OBC``, ``BLK_D'OBC``,
+       ``BLK_D'BB``, and ``MCU1_HEALTHY`` output are not yet mapped to specific MCU pins in the
+       pinout table.
+     - TBD
+     - Before CubeMX finalization / layout freeze
+   * - **Low-side inhibit protection-component recheck.** The Zener clamp / snubber / flyback
+       diode values for the low-side inhibit's gate protection network were derived while the
+       EPC2204 GaN FET was still the leading candidate (specifically the 5.1 V Zener, sized
+       against GaN's 6.0 V max gate rating); confirm these against the BUK9Y4R8-60E,115's
+       actual silicon MOSFET gate ratings.
+     - TBD
+     - After first PCB prototype
+   * - **Second e-Fuse thermal budget.** Simulation shows the two e-Fuse ICs could jointly
+       dissipate ~86.6 W if all five rails short simultaneously; verify the PCB copper pour and
+       thermal via budget accommodates two ICs' worth of heat rather than one.
+     - TBD
+     - Before layout freeze
+   * - **Pack fuse thermal layout.** The decision to use a single (not paralleled) 30 A
+       time-lag fuse per pack relies on copper pour/plane sizing rather than parallel fuses to
+       manage dissipation; this pour sizing has not yet been done.
+     - TBD
+     - Before layout freeze
+   * - **MPPT rail current confirmation.** The MPPT board's ~2–3 A raw-battery-voltage need
+       (driving the ``E_FUSE_MPPT`` rail and its 2-channel allocation) should be formally
+       confirmed with the MPPT subteam rather than treated as a Battery-Board-side estimate.
+     - TBD
+     - MPPT subteam coordination
+   * - **CAN telemetry dictionary gap.** ``E_FUSE_MPPT`` current telemetry is not yet listed in
+       the `CAN Telemetry`_ data dictionary, which predates the second e-Fuse/fifth-rail
+       decision.
+     - TBD
+     - Schematic/firmware update
+   * - **Payload current-sense sampling sequence undefined.** Unlike MPPT's documented
+       2-channel ``SEL``/``SEH`` sampling sequence, Payload's 3-channel sampling sequence for
+       `E-Fuse Fault Handling (Firmware)`_ is not yet worked out.
+     - TBD
+     - Firmware design
+   * - **Interboard reset/failover bench verification.** The BLOCK handshake protocol, the
+       MCU1_HEALTHY detector's ~50 ms failover time, and the OBC e-Fuse privilege matrix are
+       currently a paper design; none of it has been bench-verified yet.
+     - TBD
+     - Firmware + hardware bring-up
+   * - Low-side inhibit (NTJD1155L) replacement — **superseded**; see Component Change Log for
+       the current 8-transistor array design. Original risk entry retained for traceability.
+     - Resolved
+     - N/A
    * - Ferrite bead on ``PACK_N`` current rating — must be verified against peak discharge
        current.
      - TBD
@@ -1473,27 +2545,16 @@ Open Risks & TBDs
        cell-protection harness.
      - TBD
      - Coordinator review
-   * - Confirm with OBC whether ``EPS_INT``/``BATT_INT`` behave as deduced (see
-       `PC104 Bus Connector`_) — no legacy firmware was available to verify directly.
-     - TBD
-     - OBC coordination
    * - MOSFET ratings — all MOSFETs in the main power path must be rated at ≥ 2× battery
        voltage to withstand spikes from Electrodynamic Tether deployment.
-     - TBD
-     - Component selection review
-   * - Inrush current limits — LCL trip thresholds for each subsystem not yet defined.
      - TBD
      - System-level power budget
    * - BQ28Z610 filter capacitor values (``VC1``, ``VC2``, ``SRP``, ``SRN``) — values not
        yet chosen. Document rationale when selected.
      - TBD
-     - Schematic update
-   * - Charging implementation — optocoupler vs. optoemulator vs. buck + op-amp feedback.
-       Finalise approach considering radiation environment.
-     - TBD
      - Architecture review
    * - What systems remain powered in SOS mode — formal power budget for safe mode not yet
-       finalised. Advisor recommends ADCS + EPS + COMMS (17 W).
+       finalised. Maybe ADCS + EPS + COMMS (17 W).
      - TBD
      - System-level review
    * - Death-of-discharge scenario — behaviour and recovery if battery fully depletes not
@@ -1518,11 +2579,6 @@ Open Risks & TBDs
        published by NDK) — confirm via NDK or bench measurement before fab sign-off.
      - TBD
      - Before fab
-   * - E-Fuse ``CS``/``SEL``/``SEH`` current-sense usage — determine whether e-Fuse current
-       sensing is needed at all given the BQ28Z610 gas gauges already provide pack current
-       telemetry; if used, size :math:`R_{CS}` for the worst-case 1.41 A channel peak.
-     - TBD
-     - Schematic update
    * - 3.3 V rail current budget — STM32U3B5CIT6 contribution to the connector-level current
        budget (alongside the ~138 µA typical / ~265 µA worst-case LTC6995 ×2 draw) is
        pending; see `3.3V Input Protection and Filtering`_.
@@ -1534,75 +2590,7 @@ Open Risks & TBDs
 Action Items
 ------------
 
-Hardware
-
-- [ ] Select replacement for NTJD1155L low-side inhibit — compare FDC6318P (dual P-channel,
-      requires signal inversion) against 2× discrete P+N MOSFETs. Verify rated current covers
-      full battery discharge path through ``PACK_N``. Check whether a NOT gate or inverter
-      is needed for gate drive.
-- [ ] Verify ferrite bead on ``PACK_N`` is rated for full battery discharge current.
-- [ ] Verify all MOSFETs in the main power path are rated ≥ 2× battery voltage to withstand
-      transient spikes from Electrodynamic Tether deployment.
-- [x] Choose discrete component values for E-Fuse (TPS7H2140-SEP) circuit — per-channel
-      :math:`R_{\text{LIMx}} = 1.47\text{ k}\Omega`; ``EN`` inversion via SN54SC6T06-SEP;
-      see `E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)`_.
-- [ ] Choose filter capacitor values for BQ28Z610 ``VC1``, ``VC2``, ``SRP``, and ``SRN``
-      pins. Document rationale for chosen values.
-- [ ] Confirm inductor L1 = 2.2 µH is appropriate for TPS63060 switching duty cycle at
-      the chosen output voltage and load range.
-- [ ] Resolve low-side inhibit ground disconnect — confirm whether the low-side inhibit
-      should be on the high-current ``PACK_N`` path, or whether the ferrite bead on that
-      net must be replaced or removed.
-- [ ] Confirm actual :math:`C_0` for the NDK NX3225SA-16.000M-STD-CRS-2 crystal with NDK or
-      via sample measurement (currently estimated at 3 pF).
-- [ ] Size :math:`R_{CS}` for e-Fuse current sensing, or confirm the feature is unused given
-      redundant BQ28Z610 current telemetry.
-- [ ] Reduce the 3.3 V input protection network to the trimmed scope (single bulk cap + TVS
-      ~3.6 V Vrwm + series fuse/PTC) and bench-verify no UVLO-threshold dip on the STM32 under
-      a simulated cross-subsystem load-step from the shared MPPT converter node.
-
-Schematic & Design
-
-- [x] Define ``EPS_INT`` and ``BATT_INT`` net purpose (deductive analysis complete — see
-      `PC104 Bus Connector`_); still need final confirmation with OBC.
-- [ ] Determine whether MCU 3.3 V supply should be sourced from the Battery Board local
-      regulator or from the MPPT board. Document rationale and update schematic accordingly.
-- [ ] Review MPPT and Battery Board schematics together and map potential failure modes
-      across the boundary.
-- [ ] Confirm with OBC whether the primary bus is strictly FDCAN, bxCAN, or a hybrid, and
-      finalize CAN routing/topology (primary vs. redundant physical connector) accordingly.
-- [ ] Confirm PC104 bus connector current limit against NASA-STD-8739.4/IPC-2221B derating
-      and pin assignments with COMMS and OBC subteams. Clarify RBF and deployment switch pin
-      locations.
-- [ ] Confirm whether batteries can be mounted below the PCB and coordinate with Mechanical and MPPT (for kelvin and temperature sensing).
-- [ ] Finalize CubeMX parameter settings (bus speeds, ADC sampling, PWM timing, FDCAN
-      data-phase timing, NVIC priorities) and commit the ``.ioc``/generated code diff.
-- [ ] Verify hardware architecture design document (HADD) reflects the STM32U3B5CIT6 pinout
-      and migration rationale.
-
-Firmware & Testing
-
-- [ ] Define which subsystems remain powered in SOS/safe mode and formalise the 17 W
-      power budget. Confirm figures are still current (originally set April 2025).
-- [ ] Define behaviour and recovery procedure for death-of-discharge (battery fully depleted
-      below pre-charge threshold).
-- [ ] Define inrush current profile for each subsystem and set LCL trip thresholds
-      accordingly.
-- [ ] Determine what needs to be programmed on the STM32 — list firmware modules required
-      (BQ28Z610 I2C polling, heater control, watchdog PPS handling, CAN telemetry reporting
-      per the trigger/update-rate table in `CAN Telemetry`_).
-- [ ] Measure STM32U3B5CIT6 current consumption and add to power budget.
-- [ ] Migrate toolchain/startup code/linker scripts from Cortex-M4 to Cortex-M33 for the
-      new MCU.
-
-Procurement
-
-- [ ] Generate KiCad Bill of Materials.
-- [ ] Purchase test stock: BQ29737 ICs, CSD16406Q3 MOSFETs, 330 Ω resistors, 2.2 kΩ
-      resistors, 0.1 µF capacitors.
-- [ ] Verify PPTC fuse trip current is correct for the series-connected cell pairs —
-      confirm 4.5 A per cell is appropriate given the 2S4P topology and expected peak
-      discharge current.
+TBD
 
 ----
 
@@ -1612,6 +2600,8 @@ Traceability (V-Model)
 Requirements
 ~~~~~~~~~~~~
 
+TBD
+
 .. req:: Battery pack bus voltage
    :id: REQ_EPS_001
    :status: draft
@@ -1619,88 +2609,12 @@ Requirements
    The battery pack shall provide a nominal bus voltage of 7.2 V in a 2S Li-Ion
    configuration, with a maximum charge voltage not exceeding 8.4 V.
 
-.. req:: Cell-level fault protection
-   :id: REQ_EPS_002
-   :status: draft
 
-   Each Li-Ion cell shall be protected against overvoltage (OVP), undervoltage (UVP),
-   overcurrent in charge (OCC), overcurrent in discharge (OCD), overload in discharge,
-   short circuit in charge, and overtemperature in charge and discharge.
-
-.. req:: Cell balancing
-   :id: REQ_EPS_003
-   :status: draft
-
-   The battery pack shall balance series cells during charging to prevent individual cell
-   overvoltage and to extend pack lifespan.
-
-.. req:: Launch safety inhibit
-   :id: REQ_EPS_004
-   :status: draft
-
-   The battery pack shall be electrically inhibited from supplying current to any load
-   during launch and until satellite deployment is confirmed, in accordance with CubeSat
-   launch provider requirements.
-
-.. req:: Pack-level overcurrent protection
-   :id: REQ_EPS_005
-   :status: draft
-
-   The battery pack output shall be protected against overcurrent and reverse polarity
-   conditions before current reaches any downstream subsystem.
-
-.. req:: Per-cell fault isolation
-   :id: REQ_EPS_006
-   :status: draft
-
-   A single shorted cell shall be isolatable from its parallel bank without interrupting
-   power delivery from the remaining cells.
-
-.. req:: Inter-string isolation
-   :id: REQ_EPS_007
-   :status: draft
-
-   The two 2S2P battery strings shall be electrically isolated from one another to prevent
-   reverse current flow from a higher-voltage string into a lower-voltage string.
-
-.. req:: Battery telemetry
-   :id: REQ_EPS_008
-   :status: draft
-
-   The EPS shall measure and report battery pack voltage, current, temperature, and state
-   of charge for each string independently over I2C to the STM32 MCU.
-
-.. req:: Thermal protection
-   :id: REQ_EPS_009
-   :status: draft
-
-   The EPS shall monitor battery temperature and shall activate a heater circuit to
-   maintain battery temperature within the safe operating range during eclipse.
-
-.. req:: Watchdog reset
-   :id: REQ_EPS_010
-   :status: draft
-
-   The MCU shall be reset by an external hardware watchdog if a PPS signal from the OBC
-   is not received within 1.25 s, without requiring MCU firmware intervention.
-
-.. req:: Safe mode power continuity
-   :id: REQ_EPS_011
-   :status: draft
-
-   In safe mode, the EPS shall maintain power to ADCS, EPS, and COMMS subsystems. Total
-   power budget for safe mode shall not exceed 17 W (figure subject to revision).
-
-.. req:: Redundant CAN telemetry bus
-   :id: REQ_EPS_012
-   :status: draft
-
-   The EPS Battery Board shall report telemetry to OBC over a primary and redundant CAN bus,
-   such that a fault on one physical CAN connector or transceiver does not prevent telemetry
-   delivery.
 
 Design Specifications
 ~~~~~~~~~~~~~~~~~~~~~~
+
+TBD
 
 .. spec:: 2S4P split-pack battery topology
    :id: SPEC_EPS_001
@@ -1714,87 +2628,6 @@ Design Specifications
    failure mode of stacked 1S ICs and halves the current through each FET pair, reducing
    :math:`I^2R` losses by a factor of four versus a single-string design.
 
-.. spec:: BQ28Z610 cell-level protection
-   :id: SPEC_EPS_002
-   :satisfies: REQ_EPS_002, REQ_EPS_003, REQ_EPS_008
-
-   Two BQ28Z610 ICs, one per 2S2P string, provide OVP, UVP, OCC, OCD, overload discharge,
-   short-circuit-in-charge, and overtemperature protection for charge and discharge. Each IC
-   uses two independent ADCs to sample cell voltage and current simultaneously, providing
-   accurate state-of-health telemetry. Passive cell balancing is handled by an external
-   balancing schematic to support the higher balancing currents required by the 4-cell
-   parallel banks. Low-pass filter capacitors on ``VC1``, ``VC2``, ``SRP``, and ``SRN``
-   reduce EMI coupling into the ADCs. Both ICs communicate over I2C (fixed address 0x55)
-   using two independent I2C peripherals (I2C1, I2C2) on the STM32U3B5CIT6.
-
-.. spec:: Per-cell PPTC fusing
-   :id: SPEC_EPS_003
-   :satisfies: REQ_EPS_006
-
-   One PPTC fuse rated at 4.5 A trip current is placed in series with each cell. An
-   internal cell short causes parallel cells to sink excessive current into the faulted
-   cell; the PPTC fuse trips and isolates the shorted cell, allowing the remaining cells
-   in the bank to continue operating. PPTC fuses are automatically resettable and
-   introduce a negligible voltage drop under normal conditions.
-
-.. spec:: E-Fuse pack output protection
-   :id: SPEC_EPS_004
-   :satisfies: REQ_EPS_005
-
-   A TPS7H2140-SEP (PTPS7H2140PWPTSEP) radiation-tolerant quad e-Fuse is placed at the
-   battery pack output, gated by a series 2× parallel 1N5822U reverse-blocking diode pair on
-   its ``IN`` pin. Its four channels are split, one per downstream subsystem
-   (``E_FUSE_COMMS``, ``E_FUSE_SBAND``, ``E_FUSE_OBC``, ``E_FUSE_PAYLOAD``), each
-   independently current-limited to ~1.36 A via its own :math:`R_{\text{LIMx}} = 1.47
-   \text{ k}\Omega`. The E-Fuse response is significantly faster than the PPTC fuses,
-   protecting downstream subsystems from transient fault currents. ``EN1-4`` are commoned
-   and driven from ``EN_D1`` through an SN54SC6T06-SEP inverter (see
-   `E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)`_).
-
-.. spec:: Deployment timer and launch inhibit
-   :id: SPEC_EPS_005
-   :satisfies: REQ_EPS_004
-
-   An LTC6995HS6-1 silicon oscillator deployment timer controls the low-side inhibit
-   (PACK_N ground path switch), preventing any battery current from flowing until the
-   satellite has completed deployment. A second LTC6995 instance acts as the watchdog
-   timer. The high-side inhibit — now implemented by the TPS7H2140-SEP e-Fuse rather than
-   the previous TPS24750 — is gated by the ANDed output of both timers (``EN_D1`` in
-   ``power_control_RBF.sch``), providing dual-redundant safety against false positive
-   activation.
-
-.. spec:: STM32U3B5CIT6 microcontroller
-   :id: SPEC_EPS_006
-   :satisfies: REQ_EPS_008, REQ_EPS_009, REQ_EPS_010
-
-   The STM32U3B5CIT6 MCU provides two independent I2C peripherals to poll both BQ28Z610
-   ICs at their shared address (0x55) without a multiplexer. It receives battery
-   temperature via PA6, controls heater MOSFETs via PA8 (TIM1_CH1) and PA5 (TIM8_CH1N,
-   complementary), and receives e-Fuse fault/diagnostic status via PA10 and the ``CS``/
-   ``SEL``/``SEH`` lines. An external 16 MHz NDK NX3225SA-16.000M-STD-CRS-2 crystal on
-   PH0/PH1 provides a stable clock reference across the thermal cycling range of orbit.
-   An external hardware watchdog (LTC6995) resets the MCU if PPS from the OBC is not
-   received within 1.25 s; a TPS3823-25DBVR supervisor additionally provides brownout/
-   fault reset independent of firmware, coordinated with the MCU's internal BOR0 threshold.
-
-.. spec:: Redundant CAN telemetry bus
-   :id: SPEC_EPS_008
-   :satisfies: REQ_EPS_012
-
-   Two native STM32U3B5CIT6 FDCAN controllers (FDCAN1 on PA11/PA12, FDCAN2 on PB12/PB13),
-   each paired with its own TCAN334GDCNT transceiver, provide a primary and redundant CAN
-   bus to OBC. Both transceivers are held in standby (not full shutdown) so that an
-   emergency telemetry signal can be transmitted without a regulator/boot delay. See
-   `CAN Transceiver — TCAN334GDCNT`_ and `CAN Telemetry`_.
-
-.. spec:: Safe mode load shedding
-   :id: SPEC_EPS_007
-   :satisfies: REQ_EPS_011
-
-   The PDM provides commandable load switching via I2C from the OBC, with individual
-   LCLs per output. In safe mode, all non-essential loads are shed and power is
-   maintained only to ADCS, EPS, and COMMS. The 17 W safe mode power figure must be
-   validated against the final power budget before PDM LCL thresholds are set.
 
 Test Cases & Verification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1816,7 +2649,7 @@ Test Cases & Verification
 
 .. test:: Launch Inhibit
    :id: TEST_EPS_003
-   :verifies: SPEC_EPS_003
+   :verifies: SPEC_EPS_005
 
    With deployment timer in the pre-deployment (inhibit) state, verify that no voltage appears
    at any load output. Simulate deployment switch activation and confirm power is enabled
@@ -1824,7 +2657,7 @@ Test Cases & Verification
 
 .. test:: Telemetry Accuracy
    :id: TEST_EPS_004
-   :verifies: SPEC_EPS_004
+   :verifies: SPEC_EPS_002
 
    Compare BQ28Z610 reported current and voltage against calibrated bench measurements across
    a range of charge/discharge currents. Pass criterion: ≤ 1% error on current, ≤ 0.5% on
@@ -1839,6 +2672,50 @@ Test Cases & Verification
    received by OBC over the remaining bus without a firmware restart. Repeat for the other
    bus.
 
+.. test:: Pack Fuse Asymmetric Clearing
+   :id: TEST_EPS_006
+   :verifies: SPEC_EPS_003
+   :added: 2026-09-08
+
+   Simulate a shorted ideal diode driving a cross-pack loop fault current (80–120 A+) and
+   confirm Pack A's fuse clears first (within ~1–3 ms) while Pack B's fuse survives and
+   continues to supply the 10.8 A system bus alone. Confirm via SPICE simulation before
+   physical destructive testing.
+
+.. test:: Five-Rail E-Fuse Fault Isolation and Auto-Retry
+   :id: TEST_EPS_007
+   :verifies: SPEC_EPS_004
+   :added: 2026-09-08
+
+   Fault-inject a hard short on each of the five e-Fuse rails in turn (with the other four
+   healthy) and verify the auto-retry latching sequence (`E-Fuse Fault Handling (Firmware)`_)
+   isolates only the faulted rail within its 5 s cooldown, leaving the other four powered.
+   Repeat with all five rails shorted simultaneously and verify thermal shutdown does not
+   occur before firmware response, per the ~86.6 W combined dissipation estimate in
+   `Simulation Findings`_.
+
+.. test:: Low-Side Inhibit Current and Switching
+   :id: TEST_EPS_008
+   :verifies: SPEC_EPS_009
+   :added: 2026-09-08
+
+   Bench-verify the 8-transistor low-side inhibit array conducts the full rated discharge
+   current (~10–12 A) with voltage drop within simulation-predicted bounds (~0.084 V), and
+   that ``EN_D3`` toggling produces clean, glitch-free switching with the TPSI3050-Q1 driver
+   in place (building on the netlist-level SPICE verification in `Simulation Status`_).
+
+.. test:: Interboard BLOCK Handshake and OBC E-Fuse Failover
+   :id: TEST_EPS_009
+   :verifies: SPEC_EPS_010
+   :added: 2026-09-08
+
+   With both MCUs powered and communicating normally, verify Case 1 of the
+   `OBC E-Fuse Privilege Levels`_ matrix (full OBC control, normal operation). Then
+   individually simulate a CAN failure, a BLOCK handshake failure, and an MCU1 heartbeat
+   stoppage, and verify the system reaches the diagnosis and e-Fuse policy specified for the
+   corresponding case in each instance, including the ~50 ms MCU1_HEALTHY failover window.
+
+
 ----
 
 Bring-Up & Debug Procedure
@@ -1846,29 +2723,39 @@ Bring-Up & Debug Procedure
 
 #. **Pre-power checks**: Verify no short circuit between ``PACK_P``/``PACK_N`` and GND using
    a multimeter in continuity mode.
-#. **Verify PPTC fuse placement**: Confirm each PPTC fuse is in series with its respective
-   cell before connecting the battery pack.
+#. **Verify pack fuse placement**: Confirm each pack-level time-lag fuse is in series with its
+   respective 2S2P pack's output header before connecting the battery pack.
 #. **Inhibit state check**: With deployment timer in inhibit state, confirm that ``EN_D1``
-   and ``EN_D3`` are logic LOW and no output voltage is present on any load rail.
+   and ``EN_D3`` are logic LOW and no output voltage is present on any load rail, including
+   the low-side inhibit's 8-transistor array (verify the TPSI3050-Q1 driver outputs are also
+   at 0 V).
 #. **Apply power at current limit**: Connect bench supply at 3.3 V, 100 mA current limit.
    Confirm STM32 powers up and crystal oscillator starts (measure PH0/PH1 for 16 MHz clock).
 #. **I2C communication**: Scan I2C bus (using STM32 or a logic analyser) and confirm BQ28Z610
-   responds at address 0x55 on both I2C peripherals.
+   responds at address 0x55 on both I2C peripherals, and confirm the TCA9534 e-Fuse
+   diagnostics expander responds at its assigned address.
 #. **Deployment timer simulation**: Simulate deployment switch activation. Verify that the
    low-side inhibit and high-side inhibit enable in sequence.
 #. **Battery pack connection**: With all protection verified, connect battery pack. Monitor
    bus voltage and confirm it is within expected range (~7.2 V – 8.4 V).
 #. **Charge cycle test**: Initiate a charge cycle and verify CC and CV phases transition
    correctly, and that the BQ28Z610 reports state-of-charge progression.
-#. **Fault injection**: Force an overvoltage or overcurrent condition and confirm the
-   BQ28Z610 opens the appropriate FET within the rated response time.
+#. **Fault injection**: Force an overvoltage or overcurrent condition on each of the five
+   e-Fuse rails and confirm the auto-retry latching sequence
+   (`E-Fuse Fault Handling (Firmware)`_) isolates only the faulted rail within its expected
+   5 s cooldown window, leaving the other four rails powered.
+#. **Interboard handshake test**: With both boards powered and communicating, verify the
+   BLOCK handshake protocol correctly reports MCU2 as alive; then simulate an OBC CPU lockup
+   (holding ``BLK_D'OBC`` static) and confirm MCU1 declares MCU2 dead and executes the
+   expected power-cycle response per the privilege matrix in
+   `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_.
 
 ----
 
 Errata
 ------
 
-- No known errata for v0.1. Update this section as issues are discovered and accepted
+- No known errata for v0.1–v0.2. Update this section as issues are discovered and accepted
   without fix for the current revision.
 
 ----
@@ -1917,11 +2804,74 @@ Append-only. Add an entry after each prototyping or testing phase.
 :Why It Failed: Both parts were selected early in the design for functional fit, before the
                 program's radiation-hardening requirements were fully worked through for this
                 board.
-:Resolution: Both were replaced by a single TPS7H2140-SEP (PTPS7H2140PWPTSEP) SEP-grade
-             quad e-Fuse (30 krad(Si) TID, SEL-immune to 43 MeV·cm²/mg), which now absorbs
-             both roles. Its four channels were split (2026-08-28 update) to give OBC
-             independent per-subsystem telemetry instead of a single combined 5.4 A rail.
-             See `E-Fuse — TPS7H2140-SEP (PTPS7H2140PWPTSEP)`_.
+:Resolution: Both were replaced by a single TPS7H2140-SEP SEP-grade quad e-Fuse (30 krad(Si)
+             TID, SEL-immune to 43 MeV·cm²/mg), which now absorbs both roles. Its channels
+             were split (2026-08-28) to give OBC independent per-subsystem telemetry. See
+             `E-Fuse — TPS7H2140-SEP / TPS4H160-Q1`_.
+
+[2026-09-02] (Fifth Rail / Second E-Fuse)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:What Failed: A single quad-channel e-Fuse cannot supply more than four independent rails,
+              but a fifth raw-battery-voltage consumer (the MPPT board itself, ~2–3 A) was
+              identified after the four-rail architecture was already finalized.
+:Why It Failed: The original four-rail split (COMMS/S-band/OBC/Payload, 2026-08-28) did not
+                anticipate MPPT needing its own raw feed from this board.
+:Resolution: Added a second e-Fuse instance; channels are now allocated per rail by current
+             need (Payload ×3, MPPT ×2, OBC/S-band/Comms ×1 each) rather than one channel per
+             rail. See `Channel Topology`_.
+
+[2026-09-04] (Low-Side Inhibit Current Rating)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:What Failed: The NTJD1155L low-side inhibit (±1.3 A max) could not carry the full battery
+              discharge current once the requirement grew to ~10 A.
+:Why It Failed: The part was sized against an earlier, lower current requirement; the
+              requirement grew without the low-side inhibit being re-sized alongside it.
+:Resolution: Replaced with a redundant 8-transistor discrete MOSFET array (BUK9Y4R8-60E,115)
+             driven by a TPSI3050-Q1 capacitive-isolated gate driver, after a GaN-vs-silicon
+             evaluation favored silicon for driver simplicity and mechanical robustness. See
+             `Low-Side Inhibit — 8× BUK9Y4R8-60E,115 (Redundant MOSFET Array)`_.
+
+[2026-09-04] (EPS_INT / BATT_INT Retirement)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:What Failed: The formally-defined EPS_INT/BATT_INT interrupt lines, while functionally
+              understood, did not actually give the EPS autonomous authority to recover OBC
+              from a Single-Event Latchup, and introduced EMI/RTOS-nondeterminism risk as
+              long board-to-board discrete lines.
+:Why It Failed: The lines were inherited from a legacy schematic and only formally documented
+              (issue #141), not re-evaluated against the mission's actual fault-recovery needs
+              until this review.
+:Resolution: Removed both nets; replaced with an autonomous CAN-heartbeat-timeout supervisor
+             role for the EPS plus the dedicated BLOCK handshake / RST_D'OBC architecture. See
+             `Interboard Reset, Health-Check, and OBC E-Fuse Failover Architecture`_.
+
+[2026-09-05] (MCU Reset Line Robustness)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:What Failed: The earlier decision to omit any component between the TPS3823-25's RESET
+              output and NRST left no protection if the supervisor itself failed stuck-low,
+              which would hold the MCU in permanent reset with no recovery path.
+:Why It Failed: The original reasoning only considered contention between the supervisor and
+              the MCU's internal BOR0, not the supervisor's own single-point failure modes.
+:Resolution: Added a 1 µF high-pass coupling capacitor, a dual-Schottky transient clamp, and
+             a 100 Ω current-limiting resistor between RESET and NRST. See
+             `MCU Supervisor — TPS3823-25DBVR`_.
+
+[2026-09-06/07] (Per-Cell PPTC Fusing Retirement)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:What Failed: A routine request to re-tune the PPTC trip current for the July 2026 power
+              budget surfaced a deeper problem: PPTC fuses placed near the cells can feed
+              heat back into the pack in vacuum, lowering the cells' thermal-runaway margin,
+              and their trip threshold can drift with on-orbit temperature swings.
+:Why It Failed: PPTC was originally chosen for its resettability, without fully weighing its
+              thermal-feedback risk this close to the battery cells.
+:Resolution: Replaced per-cell PPTC fusing with a single non-resettable time-lag ceramic fuse
+             per 2S2P pack, sized to a 30 A rating with deliberately mismatched (asymmetric)
+             melting-energy characteristics between the two packs. See
+             `Pack-Level Fusing`_.
 
 ----
 
@@ -1934,14 +2884,44 @@ References
 - TPS63060 Datasheet: https://www.ti.com/lit/ds/symlink/tps63060.pdf
 - LTC6995 Datasheet: https://www.analog.com/media/en/technical-documentation/datasheets/LTC6995-6695-1-6695-2.pdf
 - TPS24750 Datasheet (superseded, see `Removal of TPS24750`_): https://www.ti.com/lit/ds/symlink/tps24750.pdf
-- NTJD1155L Datasheet: https://www.onsemi.com/pdf/datasheet/ntjd1155l-d.pdf
-- FDC6318P Datasheet (replacement candidate): https://www.onsemi.com/pdf/datasheet/fdc6318pd.pdf
+- NTJD1155L Datasheet (superseded low-side inhibit, see Component Change Log):
+  https://www.onsemi.com/pdf/datasheet/ntjd1155l-d.pdf
+- FDC6318P Datasheet (superseded low-side inhibit candidate, not selected):
+  https://www.onsemi.com/pdf/datasheet/fdc6318pd.pdf
 - LM74800-Q1 Datasheet: https://www.ti.com/lit/ds/symlink/lm7480-q1.pdf
 - TPS259472ARPWR Datasheet (superseded E-Fuse): https://www.digikey.com/en/products/detail/texas-instruments/TPS259472ARPWR/14124020
-- TPS7H2140-SEP Datasheet (current E-Fuse): https://www.ti.com/lit/ds/symlink/tps7h2140-sep.pdf
+- TPS7H2140-SEP Datasheet (space-grade E-Fuse baseline): https://www.ti.com/lit/ds/symlink/tps7h2140-sep.pdf
+- TPS4H160-Q1 (automotive-grade E-Fuse, current prototype substitute): search manufacturer
+  part TPS4H160-Q1
 - SN54SC6T06-SEP Datasheet (E-Fuse EN inverter): https://www.ti.com/lit/ds/symlink/sn54sc6t06-sep.pdf
-- 1N5822U Datasheet (reverse-current / spike-clamp Schottky): search manufacturer part
+- 1N5822U Datasheet (series input reverse-blocking Schottky): search manufacturer part
   1N5822U, LCC2B package, ESCC-qualified per QPL005
+- JANTXV 1N5806/1N5806U Datasheet (e-Fuse output negative-spike clamp, current selection):
+  search manufacturer part 1N5806, MIL-PRF-19500/477
+- TCA9534 I2C GPIO Expander Datasheet (e-Fuse SEL/SEH/FAULT diagnostics mux): search
+  manufacturer part TCA9534, TSSOP-16 package
+- SN74LVC1G3157 Analog Mux Datasheet (e-Fuse current-sense mux): search manufacturer part
+  SN74LVC1G3157, SOT-SC70 (DCK) package
+- NCR18650GA Cell Datasheet: https://actec.dk/media/documents/45D7276ABE10.pdf
+- Littelfuse 0456030 Datasheet (Pack A time-lag fuse):
+  https://www.littelfuse.com/products/fuses-overcurrent-protection/fuses/surface-mount-fuses/nano-2-fuses/456
+- Eaton CB61F30A Datasheet (Pack B time-lag fuse):
+  https://www.eaton.com/content/dam/eaton/products/electronic-components/resources/data-sheet/eaton-cb61f-surface-mount-brick-fuses-data-sheet.pdf
+- BUK9Y4R8-60E,115 Datasheet (low-side inhibit MOSFET): search manufacturer part
+  BUK9Y4R8-60E,115
+- EPC2204 / EPC7019G Datasheets (GaN FET candidates, not selected — see
+  `Low-Side Inhibit — 8× BUK9Y4R8-60E,115 (Redundant MOSFET Array)`_): search manufacturer
+  part EPC2204 / EPC7019G
+- IRHF57034 Datasheet (rad-hard Si MOSFET candidate, not selected): search manufacturer part
+  IRHF57034
+- TPSI3050-Q1 Datasheet (capacitive-isolated MOSFET gate driver): search manufacturer part
+  TPSI3050-Q1
+- BZT52B5V1 Datasheet (gate Zener clamp): search manufacturer part BZT52B5V1
+- MAX40200 Datasheet (ideal diode, OBC e-Fuse failover): https://www.analog.com/media/en/technical-documentation/data-sheets/max40200.pdf
+- DTC013UB Datasheet (RST_D'OBC receive BJT, integrated base resistor): search manufacturer
+  part DTC013UB, SOT-323 package
+- BAT54SW / BAT54S Datasheet (dual Schottky, reset-line and heartbeat-detector clamps): search
+  manufacturer part BAT54SW / BAT54S
 - BQ25887RGET (2S Charger): https://www.digikey.ca/en/products/detail/texas-instruments/BQ25887RGET/10270216
 - CC-CV with op-amps: https://www.ti.com/lit/ab/slla619/slla619.pdf
 - BQ25887 Application Notes: https://www.ti.com/lit/an/slua938/slua938.pdf
