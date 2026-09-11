@@ -412,6 +412,8 @@ footer {
 .badge-rail-5v-adcs { background-color: #F1C40F !important; color: #1e293b !important; }
 .badge-health { background-color: #00A8FF !important; color: #ffffff !important; }
 .badge-mppt-health { background-color: #00D2D3 !important; color: #1e293b !important; }
+.badge-charge-batt1 { background-color: #E74C3C !important; color: #ffffff !important; }
+.badge-charge-batt2 { background-color: #D35400 !important; color: #ffffff !important; }
 
 /* Inline Legend Pills */
 .pc104-legend {
@@ -454,7 +456,7 @@ footer {
 }
 
 .check-green {
-    color: #27ae60;
+    color: #8BAE62;
     font-weight: bold;
     font-size: 14px;
 }

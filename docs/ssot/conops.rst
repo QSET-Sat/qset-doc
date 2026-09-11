@@ -32,7 +32,7 @@ The satellite will carry an **electrodynamic tether (EDT)** as its primary paylo
 
 For some physics background, an electrodynamic tether is essentially a long, conducting wire deployed from a spacecraft that leverages the fundamental laws of electromagnetism to alter its orbit without using chemical propellant. The system operates on three core physical principles:
 
-* **Lorentz Force:** As the satellite travels through LEO at high orbital velocities (~7.5 km/s), the conducting tether cuts through Earth's geomagnetic field. The relative motion generates a motional electromotive force (EMF), driving an electrical current through the wire. The resulting force is governed by the Lorentz force equation:
+* **Lorentz Force:** As the satellite travels through LEO at high orbital velocities, the conducting tether cuts through Earth's geomagnetic field. The relative motion generates a motional electromotive force (EMF), driving an electrical current through the wire. The resulting force is governed by the Lorentz force equation:
 
   .. math::
 
@@ -62,26 +62,23 @@ The mission aims to achieve both technical success and educational advancement:
 
 1. Mission Lifecycles and Phases
 ================================
+The mission will be split into seperate phases which each will depend on the previous phases's success
 
-The mission lifecycle is broken into chronological phases tracking the satellite from development to disposal.
+Phase 1: Launch
+  * Load the satellite onto the rocket and get it into space.
 
-Phase 0: Integration & Launch
-  The satellite is placed into the launch vehicle deployer pod. It remains completely powered down via physical deployment switches.
+Phase 2: Data Collection
+  * Locate the satellite with GNSS, communicate with the sat, and start collecting data about the environment
 
-Phase 1: Deployment & Early Orbit (LEOP)
-  The deployer releases the satellite. Switches close, booting the flight computer. A mandatory 30-minute radio silence window is executed before antenna deployment mechanisms are triggered.
+Phase 3: Deployment
+  * Deploy the teather in one hopefully smooth continuous deployment
 
-Phase 2: Detumbling & Commissioning
-  The Attitude Determination and Control System (ADCS) dampens rotational tip-off rates. Once stable, the On-Board Computer sequences health and diagnostic tests on all subteams.
+Phase 4: Data Collection Part 2
+  * Cycle the teather on and off to try measuring a difference in velocity and acceleration. Get enough data to conclude that the teather did/didn't work
 
-Phase 3: Nominal Operations
-  The primary mission phase. The satellite stabilizes into its target orientation, executes core payload deployment, and logs scientific and housekeeping data.
+Phase 5: Decommissioning
+  * stop operation and allow the satellite to crash into the earth within 5 years of launch, ideally closer to 1-2 years though.
 
-Phase 4: Ground Station Downlink
-  During line-of-sight passes over the university ground station, the communications system switches to an active high-power transceiver state to download telemetry data.
-
-Phase 5: Decommissioning / Disposal
-  Atmospheric drag at 400 km naturally degrades the orbit over time. The spacecraft will passively re-enter the upper atmosphere and burn up completely.
 
 ---
 
@@ -94,11 +91,11 @@ Operational modes represent the software-driven states of the flight system at a
 Safe Mode
   * **Description:** Low-power baseline state designed for system survival. Payload and auxiliary data buses are entirely isolated.
   * **ADCS Action:** Slow passive sun-pointing to maximize solar panel surface exposure.
-  * **Exit Criteria:** Main battery voltage rises and stabilizes above 3.8V for 3 consecutive orbits.
+  * **Exit Criteria:** Main battery voltage rises and stabilizes above 6V for (TBD) consecutive orbits.
 
 Nominal Mode (Idle/Science)
   * **Description:** Standard operational state. Subsystem health checks are continuously aggregated.
-  * **ADCS Action:** Nadir (Earth-facing) pointing alignment active.
+  * **ADCS Action:** Correcting for payload orientation changes active.
   * **Exit Criteria:** Automatic trigger via scheduled pass windows, or forced drop due to low battery safety thresholds.
 
 Downlink Mode
@@ -126,7 +123,7 @@ Downlink Mode
      - Date
      - Description
      - Author
-   * - 1.0
-     - 2026-07-04
+   * - 0.2
+     - 2026-09-11
      - Initial baseline finalized with launch window and orbit geometries.
      - Systems Engineering Lead

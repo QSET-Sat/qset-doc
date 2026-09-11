@@ -146,6 +146,8 @@ Table 1: Header Pin Layout (H1 & H2)
      <span class="pc104-legend-item"><span class="pc104-legend-color badge-vbat-comms"></span> Comms VBAT</span>
      <span class="pc104-legend-item"><span class="pc104-legend-color badge-vbat-obc"></span> OBC VBAT</span>
      <span class="pc104-legend-item"><span class="pc104-legend-color badge-health"></span> Health / INT</span>
+     <span class="pc104-legend-item"><span class="pc104-legend-color badge-charge-batt1"></span> CHG_BATT1</span>
+     <span class="pc104-legend-item"><span class="pc104-legend-color badge-charge-batt2"></span> CHG_BATT2</span>
    </div>
 
    <div class="pc104-table-wrapper">
@@ -165,7 +167,7 @@ Table 1: Header Pin Layout (H1 & H2)
          <td class="badge-gnd" title="Pin 32: GND">32</td>
          <td class="badge-vbat-mppt" title="Pin 34: MPPT_VBAT (MPPT Power)">34</td>
          <td class="badge-gnd" title="Pin 36: GND">36</td>
-         <td>38</td>
+         <td class="badge-charge-batt2" title="Pin 38: CHG_BATT2 (Charge Battery Pack 2 Rail)">38</td>
          <td class="badge-gnd" title="Pin 40: GND">40</td>
          <td class="badge-vbat-payload" title="Pin 42: PAYLOAD_VBAT (Payload Power)">42</td>
          <td class="badge-gnd" title="Pin 44: GND">44</td>
@@ -184,7 +186,7 @@ Table 1: Header Pin Layout (H1 & H2)
          <td class="badge-gnd" title="Pin 31: GND">31</td>
          <td class="badge-vbat-mppt" title="Pin 33: MPPT_VBAT (MPPT Power)">33</td>
          <td class="badge-gnd" title="Pin 35: GND">35</td>
-         <td>37</td>
+         <td class="badge-charge-batt2" title="Pin 37: CHG_BATT2 (Charge Battery Pack 2 Rail)">37</td>
          <td class="badge-gnd" title="Pin 39: GND">39</td>
          <td class="badge-vbat-payload" title="Pin 41: PAYLOAD_VBAT (Payload Power)">41</td>
          <td class="badge-gnd" title="Pin 43: GND">43</td>
@@ -212,7 +214,7 @@ Table 1: Header Pin Layout (H1 & H2)
          <td class="badge-gnd" title="Pin 34: GND">34</td>
          <td class="badge-rail-5v-adcs" title="Pin 36: ADCS_5V (ADCS Power)">36</td>
          <td class="badge-gnd" title="Pin 38: GND">38</td>
-         <td>40</td>
+         <td class="badge-charge-batt1" title="Pin 40: CHG_BATT1 (Charge Battery Pack 1 Rail)">40</td>
          <td class="badge-gnd" title="Pin 42: GND">42</td>
          <td>44</td>
          <td class="badge-gnd" title="Pin 46: GND">46</td>
@@ -240,7 +242,7 @@ Table 1: Header Pin Layout (H1 & H2)
          <td class="badge-gnd" title="Pin 33: GND">33</td>
          <td class="badge-rail-5v-adcs" title="Pin 35: ADCS_5V (ADCS Power)">35</td>
          <td class="badge-gnd" title="Pin 37: GND">37</td>
-         <td>39</td>
+         <td class="badge-charge-batt1" title="Pin 39: CHG_BATT1 (Charge Battery Pack 1 Rail)">39</td>
          <td class="badge-i2c-purple" title="Pin 41: I2C_A_SDA (I2C Bus A)">41</td>
          <td class="badge-i2c-purple" title="Pin 43: I2C_A_SCL (I2C Bus A)">43</td>
          <td class="badge-gnd" title="Pin 45: GND">45</td>
@@ -389,6 +391,11 @@ Table 2: Master PC104 Pin Mapping
      - ``GND``
      - Ground
      - 0
+   * - :raw-html:`<span class="pin-badge badge-charge-batt1">H1</span>`
+     - 39-40
+     - ``CHG_BATT1``
+     - Charge Battery Pack 1 Rail
+     - 5.5 to 30
    * - :raw-html:`<span class="pin-badge badge-i2c-purple">H1</span>`
      - 41
      - ``I2C_A_SDA``
@@ -474,6 +481,11 @@ Table 2: Master PC104 Pin Mapping
      - ``GND``
      - Ground
      - 0
+   * - :raw-html:`<span class="pin-badge badge-charge-batt2">H2</span>`
+     - 37-38
+     - ``CHG_BATT2``
+     - Charge Battery Pack 2 Rail
+     - 5.5 to 30
    * - :raw-html:`<span class="pin-badge badge-gnd">H2</span>`
      - 39-40
      - ``GND``
@@ -520,7 +532,7 @@ Table 3: Subsystem Power Matrix
    * - Subsystem
      - Gets 3V3?
      - Gets 5V?
-     - Gets VBAT?
+     - Gets VBAT / Charge?
    * - **ADCS**
      - :raw-html:`<span class="check-green">&#10004;</span>` H1 (31-32)
      - :raw-html:`<span class="check-green">&#10004;</span>` H1 (35-36)
@@ -528,7 +540,7 @@ Table 3: Subsystem Power Matrix
    * - **BATT**
      - :raw-html:`<span class="check-green">&#10004;</span>` H1 (47-48)
      - ---
-     - ---
+     - :raw-html:`<span class="check-green">&#10004;</span>` H1 (39-40), H2 (37-38)
    * - **OBC**
      - :raw-html:`<span class="check-green">&#10004;</span>` H1 (27-28)
      - ---
@@ -546,91 +558,86 @@ Table 3: Subsystem Power Matrix
      - ---
      - :raw-html:`<span class="check-green">&#10004;</span>` H2 (33-34)
 
-3.2 Subsystem Electrical Load Profiles
---------------------------------------
-This section tracks the input hardware voltage tolerances and transient spikes that the Electrical Power System (EPS) regulators must accommodate.
+3.2 Subsystem Power Budget & Electrical Load Profiles
+-----------------------------------------------------
+This section details the subsystem power consumption, duty cycles, and Orbit Average Power (OAP), alongside spacecraft system-level power generation and discharge constraints.
 
-.. list-table:: Subsystem Electrical Load Requirements
-   :widths: 15 15 20 20 30
+.. list-table:: Subsystem Power Consumption & Duty Cycle Breakdown
+   :widths: 30 18 18 18 16
    :header-rows: 1
 
-   * - Subsystem
-     - Supply Rail
-     - Max Continuous Current
-     - Max Peak Current (Inrush)
-     - Input Voltage Tolerance
-   * - (OBC)
-     - 3V3_SYS
-     - 350 mA
-     - 400 mA (Bootup spike)
-     - $3.3\text{V} \pm 5\%$
-   * - COMMS
-     - 5V_SYS
-     - 1.5 A (S-Band Transmit)
-     - 2.8 A (PA Turn-on, <15ms)
-     - $5.0\text{V} \pm 2\%$ (Low Ripple)
-   * - ADCS
-     - 3V3_SYS
-     - 300 mA
-     - 800 mA (Torquer Spike)
-     - $3.3\text{V} \pm 10\%$
-   * - PAYLOAD
-     - 5V_SYS
-     - 600 mA
-     - 1.2 A (Sensor Initialization)
-     - $5.0\text{V} \pm 5\%$
+   * - Subsystem/Component
+     - Peak Power (W)
+     - Idle Power (W)
+     - Duty Cycle (%)
+     - OAP (W)
+   * - **OBC**
+     - 1.3
+     - 0.6
+     - 50
+     - 0.95
+   * - **Payload (Tether)**
+     - 16
+     - 0.5
+     - 10
+     - 2.05
+   * - **ADCS**
+     - 5
+     - 0.6
+     - 15
+     - 1.26
+   * - **COMMS**
+     - 10
+     - 1
+     - 15
+     - 2.35
+   * - **EPS: MPPT Board Losses**
+     - 1.5
+     - 0.8
+     - 66.6
+     - 1.2662
+   * - **EPS: Battery Board Path**
+     - 1
+     - 0.3
+     - 50
+     - 0.65
 
-3.3 RF Feedline Coaxial Interface
----------------------------------
-The connection between the COMMS transmitter board and the deployable antenna assembly must utilize an edge-mount **SMA Female connector** with a matched impedance of $50\ \Omega$.
+System Summary
+~~~~~~~~~~~~~~
+
+.. list-table:: System Power Constraints & Totals
+   :widths: 65 35
+   :header-rows: 1
+
+   * - Parameter
+     - Value (W)
+   * - **Solar Generation Limit (W)**
+     - 16.4
+   * - **Total Calculated OAP (W)**
+     - 8.5262
+   * - **Battery Discharge Limit (W)**
+     - 19.2
+   * - **Absolute Peak Sum (W)**
+     - 34.8
+
+.. note::
+
+   * **Orbit Average Power (OAP):** Calculated as :math:`\text{OAP} = (P_{\text{peak}} \times D) + (P_{\text{idle}} \times (1 - D))`, yielding a total spacecraft average consumption of **8.5262 W**.
+   * **Power Positive Margin:** The total calculated OAP (**8.5262 W**) is well within the solar generation limit (**16.4 W**), verifying a positive energy balance over the orbit.
+   * **Peak Load Management:** The absolute simultaneous peak sum is **34.8 W**, which exceeds the battery discharge limit (**19.2 W**). Flight CONOPS operational constraints prohibit simultaneous peak operation of heavy loads (e.g., tether deployer and RF transmitter).
 
 ---
 
 4. Software & Logical Data Interfaces
 =====================================
 
-4.1 Shared I2C Addressing Architecture
+4.1 CAN Bus
 --------------------------------------
-To prevent bus contention, all peripherals connected to the primary :math:`\text{I}^2\text{C}` lines must utilize unique 7-bit software destination addresses.
-
-* **Electrical Power System (EPS):** ``0x40``
-* **Attitude Determination (ADCS):** ``0x42``
-* **On-Board Computer (CDH):** ``0x44`` (Master Node)
-* **Payload Controller:** ``0x46``
+The subsystems communicate with each other over a dual CAN BUS architecture specified by the ESA critera outlined in ECSS-E-ST-50-15C. We are using dual independant CAN modules which allows for redundancy in the case one line fails. For the transiever, the TCAN334 is used. 
 
 4.2 Standard Telemetry Packet Structure
 ---------------------------------------
-All frames passed between subsystems over the internal data network must use the following unified 8-byte header block structure prior to appending payload bytes.
-
-.. list-table:: Unified Telemetry Packet Header Schema
-   :widths: 15 20 25 40
-   :header-rows: 1
-
-   * - Byte Offset
-     - Field Name
-     - Data Type
-     - Description / Notes
-   * - 0
-     - START_BYTE
-     - uint8_t
-     - Fixed synchronization byte value (Always ``0xAA``)
-   * - 1
-     - ORIGIN_ID
-     - uint8_t
-     - Sender Subsystem identifier code (``0x01`` = CDH, ``0x02`` = EPS, ``0x03`` = COMMS, ``0x04`` = PL)
-   * - 2-3
-     - PACKET_ID
-     - uint16_t
-     - Monotonically increasing sequence count for packet loss tracking
-   * - 4-5
-     - LENGTH
-     - uint16_t
-     - Total length of trailing data payload bytes (Excludes this header)
-   * - 6-7
-     - HEADER_CRC
-     - uint16_t
-     - Modbus CRC-16 computation over bytes 0-5
-
+TBD
 ---
 
 5. Document Control & Revisions
@@ -644,7 +651,7 @@ All frames passed between subsystems over the internal data network must use the
      - Date
      - Description
      - Author
-   * - 1.0
-     - 2026-07-04
-     - Unified physical, electrical, and logical baselines for CDH/EPS/COMMS.
-     - Systems Engineering Lead
+   * - 0.2
+     - 2026-09-11
+     - Updated ICD with new board information.
+     - Jaron Cyna
