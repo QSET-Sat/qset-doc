@@ -1,4 +1,4 @@
-# Space-School Transition Manual
+# Space School Transition Manual
 
 This repository is created for the Space School Manager. All incoming Space School managers should follow this guideline to plan for the next school year.
 
