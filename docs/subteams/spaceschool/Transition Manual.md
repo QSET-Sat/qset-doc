@@ -12,6 +12,9 @@ reusable sign up form:
 
 https://forms.cloud.microsoft/Pages/DesignPageV2.aspx?subpage=design&FormId=O8se1rE41UKCxO-yg4uSXFIwZP6rlWVFshir1VoeAR9UQVdCTE1GMjdHMkZKSEpRT00zQUFZUkJTWS4u&Token=842dd383d7c04b6abeeccf2f7ba8ab3a
 
+https://forms.cloud.microsoft/r/jHV86pPv2L
+
+<img width="271" height="271" alt="Screenshot 2026-09-19 at 13 16 19" src="https://github.com/user-attachments/assets/b7da62f3-e342-4f81-92f1-29589ce4ab7d" />
 
 ## Labs
 
