@@ -8,7 +8,7 @@ As a whole, the Queen's Space Engineering Team (QSET) is committed to ensuring t
 
 ## Prepared Documents
 
-reusable sign up form -
+reusable sign up form - https://forms.cloud.microsoft/Pages/DesignPageV2.aspx?subpage=design&FormId=O8se1rE41UKCxO-yg4uSXFIwZP6rlWVFshir1VoeAR9UQVdCTE1GMjdHMkZKSEpRT00zQUFZUkJTWS4u&Token=842dd383d7c04b6abeeccf2f7ba8ab3a
 
 
 ## Labs
