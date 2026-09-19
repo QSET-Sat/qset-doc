@@ -14,7 +14,7 @@ https://forms.cloud.microsoft/Pages/DesignPageV2.aspx?subpage=design&FormId=O8se
 
 https://forms.cloud.microsoft/r/jHV86pPv2L
 
-<img width="271" height="271" alt="Screenshot 2026-09-19 at 13 16 19" src="https://github.com/user-attachments/assets/b7da62f3-e342-4f81-92f1-29589ce4ab7d" />
+<img width="256" height="231" alt="Screenshot 2026-09-19 at 13 16 19" src="https://github.com/user-attachments/assets/2ee9a3e3-47c7-4548-b296-f363afa87da4" />
 
 ## Labs
 
