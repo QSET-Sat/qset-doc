@@ -229,7 +229,7 @@
         <mxCell id="vcIpbtkDnTLadQpUqpdg-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;CAN RX&lt;/h2&gt;&lt;div&gt;Mode CMD from OBC&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="140" x="665" y="90" as="geometry" />
         </mxCell>
-        <mxCell id="vcIpbtkDnTLadQpUqpdg-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;MTQ driver&lt;/h2&gt;&lt;div&gt;PWM command&lt;/div&gt;" vertex="1">
+        <mxCell id="vcIpbtkDnTLadQpUqpdg-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;MTQ Command&lt;/h2&gt;&lt;div&gt;PWM command&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="140" x="665" y="320" as="geometry" />
         </mxCell>
         <mxCell id="aZWLlcak7yosPrfXDvAZ-1" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="ONe9XpLoAub8FXRgCMhh-7" value="">
