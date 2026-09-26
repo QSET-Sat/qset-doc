@@ -60,6 +60,11 @@ PLEASE give us any feedback you have. You can either send any of us individual m
 
 Many years ago, in 2019, Emma Paczkowski and Sydney Caulfeild had just finished their first year on QSET as first-years. Although they had spent a whole year on the team, they did not accomplish as much as they had hoped and they were sad to see the 50 first year students that started in september diminish to only 4 at the end of the year. To help both the experience of new members on the team as well as to increase retention, the idea of Space School was born. Over the 3 years it has run, the structure has changed and improved. This can be attributed to the wonderful additions of Thomas Sears (the space expert, team mentor and pheonimal presenter), Sean Tedesco (incredible lab writer resonsible and the previous CTO) and Piper Steffen (2021/2022 space school organizer). We hope that space school will remain an accessible option for new members looking to bridge the gap between their knowledge and the complex subsystem projects!
 
+## Sign Up Form
+https://forms.cloud.microsoft/Pages/DesignPageV2.aspx?subpage=design&FormId=O8se1rE41UKCxO-yg4uSXFIwZP6rlWVFshir1VoeAR9UQVdCTE1GMjdHMkZKSEpRT00zQUFZUkJTWS4u&Token=842dd383d7c04b6abeeccf2f7ba8ab3a
+
+https://forms.cloud.microsoft/r/jHV86pPv2L
+
 ## Contact Info
 
 Feel free to email or message on Teams.
