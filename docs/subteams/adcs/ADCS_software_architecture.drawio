@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" pages="7">
   <diagram name="System Context" id="gMRS-2YhCNnsTt9ApXrA">
-    <mxGraphModel dx="964" dy="633" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1414" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -56,7 +56,7 @@
         <mxCell id="5t0p1DGvLlKD41NMGsw9-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#eeeeee;strokeColor=#36393d;" value="&lt;h2&gt;Sun Sensors&lt;/h2&gt;&lt;div&gt;Sun vector&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="130" x="490" y="142" as="geometry" />
         </mxCell>
-        <mxCell id="UmYxT2uaBIj29ocmmyRy-1" parent="1" style="whiteSpace=wrap;html=1;labelBackgroundColor=none;perimeterSpacing=0;strokeWidth=2;" value="&lt;h2&gt;OBS&lt;/h2&gt;&lt;div&gt;Commands + telemetry&lt;/div&gt;" vertex="1">
+        <mxCell id="UmYxT2uaBIj29ocmmyRy-1" parent="1" style="whiteSpace=wrap;html=1;labelBackgroundColor=none;perimeterSpacing=0;strokeWidth=2;" value="&lt;h2&gt;OBC&lt;/h2&gt;&lt;div&gt;Commands + telemetry&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="160" x="70" y="322" as="geometry" />
         </mxCell>
         <mxCell id="savc3k1wXuZ7PzAmyh4c-2" connectable="0" parent="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Power Rails" vertex="1">
