@@ -1,4 +1,4 @@
-Hello Managers
+Hello Managers & Students
 
 All of our presentation slides for the dedicated labs under Space School are stored under the following link in Microsoft Sharepoint
 
