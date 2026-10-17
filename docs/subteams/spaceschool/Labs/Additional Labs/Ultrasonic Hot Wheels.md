@@ -86,7 +86,9 @@ Equipment:
 ## Step 3.1 - Wiring Diagram
 Use the diagram below as your reference for the whole build. The pin labels are printed on the Arduino and on the back of the sensor. Always match by label, not by position.
 
-![Wiring diagram: Arduino Nano Every, HC-SR04 and power LED](ultrasonic-hot-wheels-wiring.svg)
+<img width="1920" height="1280" alt="image" src="https://github.com/user-attachments/assets/254aa4bd-6ab3-4f77-84aa-287edd6cade4" />
+
+
 
 | From | To | Wire colour (suggested) | What it does |
 |---|---|---|---|
