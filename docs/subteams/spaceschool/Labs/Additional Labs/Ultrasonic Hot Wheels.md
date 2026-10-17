@@ -1,6 +1,6 @@
 # Additional Lab: Ultrasonic Hot Wheels Speed Trap
 
-Welcome to one of Space School's additional labs! In this lab we are going to make the Arduino *sense* the world. We will use an ultrasonic sensor to build a "speed trap" that measures how fast a Hot Wheels car is moving after it comes off a ramp.
+We will use an ultrasonic sensor to build a "speed trap" that measures how fast a Hot Wheels car is moving after it comes off a ramp.
 
 This is the same skill our satellite needs: read a sensor, timestamp the data, and turn raw numbers into a useful physical quantity. The car is our stand-in for a moving object, and velocity is our quantity.
 
