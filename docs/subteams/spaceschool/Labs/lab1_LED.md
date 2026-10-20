@@ -28,25 +28,25 @@ Note that we can also supply power to the Arduino through the power port with a 
 ![USB Powered Arduino](https://github.com/queens-satellite-team/Space-School/blob/0c69e70192f59fa8af48e341d15ac462e6f01af3/lab1/lab1-images/arduino-powered-usb.jpeg) ![Battery Powered Arduino](https://github.com/queens-satellite-team/Space-School/blob/0c69e70192f59fa8af48e341d15ac462e6f01af3/lab1/lab1-images/arduino-powered-battery.jpeg)
 
 # Step 1 - Setup Arduino IDE
-The Arduino integrated development environment or [IDE](https://en.wikipedia.org/wiki/Integrated_development_environment) is a multipurpose tool to write software and upload code to the Arduino board./
+The Arduino integrated development environment or [IDE](https://en.wikipedia.org/wiki/Integrated_development_environment) is a multipurpose tool to write software and upload code to the Arduino board.\
 To get started, download the required software from the [Arduino Download Page.](https://www.arduino.cc/en/software)
 
 ### Arduino IDE For Windows
-1. In the blue box titled *Download Options* select *Windows Win 10 and newer*. 
-2. You should get an .exe file. Open the file, and the Arduino installer program will open. 
-3. Select *Next* on the license agreement. 
-4. Make sure all *components to install* are selected, and click *Next*. 
-4. It is recommended to keep the install directory as default, but feel free to change it if necessary. Then select *Install*. 
-6. Note: there maybe multiple *Windows Security* pop-ups; these are expected, just click on *Accept* for each one. 
-7. Once installed, you can delete the .exe file from your downloads folder. 
+1. In the blue box titled '*Download Options*' select '*Windows Win 10 and newer*'. 
+2. You should get an '.exe' file. Open the file, and the Arduino installer program will open. 
+3. Select '*Next*' on the license agreement. 
+4. Make sure all '*components to install*' are selected, and click '*Next*'. 
+4. It is recommended to keep the install directory as default, but feel free to change it if necessary. Then select '*Install*'. 
+6. Note: there maybe multiple '*Windows Security*' pop-ups; these are expected, just click on '*Accept*' for each one. 
+7. Once installed, you can delete the ' .exe' file from your downloads folder. 
 8. You should now have a desktop icon for the Arduino IDE; click on this to start programming! 
 
 ### Arduino IDE For Macs 
-1. In the blue box titled *Download Options* select *MacOS Apple Silicon 12 or newer*. 
+1. In the blue box titled *Download Options* select '*MacOS Apple Silicon 12 or newer*'. 
 2. Once downloaded, you should get a .zip file. 
-3. Click on the downloaded file, and Mac should unzip it for you and place the Arduino IDE application in your *Downloads* folder. 
+3. Click on the downloaded file, and Mac should unzip it for you and place the Arduino IDE application in your '*Downloads*' folder. 
 4. Note: If Mac does not automatically unzip the file, you can right click and select *Open*. 
-5. Move the Arduino IDE application into your *Applications* folder. 
+5. Move the Arduino IDE application into your '*Applications*' folder. 
 6. Click on the Arduino IDE application to start programming! 
 
 # Step 2 - Understanding the Arduino IDE  
