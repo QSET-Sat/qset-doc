@@ -1,6 +1,16 @@
+# Introduction
+
+Hello! Welcome to the second circuit lab of Space School!\
+In this lab, we will begin by understanding the logic behind some of the sensors we are commonly used in Space School, and then we will start exploring some of the different ways we can program our Arduino board to do some fun little actions for us. 
+
+If you have any questions, please feel free to reach out to any member of the QSAT Team.\
+Contact info for the current manager can be found on the main page of this repository. 
+
 # Goals of Lab 2
 
-1️⃣  Read values from a temperature sensor on your Arduino.
+1️⃣  Learning about different sensors you may use in the coming ToastSat
+
+2️⃣  Building a sensor program and circuit
 
 # Temperature Sensors and Arduino
 
