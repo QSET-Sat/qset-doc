@@ -135,7 +135,7 @@ Some things to note:
 
 We are now going to connect our components on the breadboard using the diagram below as a reference.
 
-![LAB 1 circuit](https://imgur.com/a/xRvq6ym.jpg)
+![LAB 1 circuit](https://imgur.com/a/xRvq6ym)
 
 Open your Arduino IDE now
 
