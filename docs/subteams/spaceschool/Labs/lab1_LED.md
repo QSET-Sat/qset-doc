@@ -125,7 +125,7 @@ Steps:
 1. Connect your Arduino to the breadboard.
 2. Connect a wire from pin D12 (this pin was arbitrarily selected) to one end of your resistor.
 4. Regarding the LED, these devices are polarity sensitive, which means it matters which way you place it in the circuit.\
-If you place it the wrong way, the circuit will not work. The shorter leg of the LED is the cathode '*(negative terminal)*' and the longer leg is the anode '*(positive terminal)*'.\
+If you place it the wrong way, the circuit will not work. The shorter leg of the LED is the cathode '*negative terminal*' and the longer leg is the anode '*positive terminal*'.\
 Connect the anode to one end of the resistor.
 6. Connect a wire from the cathode of your LED to the Arduion's ground pin.
 
@@ -135,7 +135,7 @@ Some things to note:
 
 We are now going to connect our components on the breadboard using the diagram below as a reference.
 
-![LAB 1 circuit](https://imgur.com/a/xRvq6ym.png)
+![LAB 1 circuit](https://imgur.com/a/xRvq6ym.jpg)
 
 Open your Arduino IDE now
 
