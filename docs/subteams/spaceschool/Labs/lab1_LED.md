@@ -2,7 +2,8 @@
 
 Hello! Welcome to the first circuit lab of Space School! In this lab, we will begin by understanding the logic behind some of the circuit design and Arduino programming, and then we will start exploring some of the different ways we can program our Arduino board to do some fun little actions for us. 
 
-If you have any questions, please feel free to reach out to any other member of the QSAT Team. Contact info for the current manager can be found on the main page of this repository. 
+If you have any questions, please feel free to reach out to any member of the QSAT Team.\ 
+Contact info for the current manager can be found on the main page of this repository. 
 
 # Goals of Lab 1 
 
