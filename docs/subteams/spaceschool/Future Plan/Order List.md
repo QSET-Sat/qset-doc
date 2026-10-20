@@ -4,5 +4,5 @@ This repository is created for the Space School Manager. It includes all purchas
 
 ## Items (Name + Quantity + Date)
 
-Item # 1 - 9V battery
+Item # 1 - 9V battery\
 Item # 2 - toy (1) (~$60)
