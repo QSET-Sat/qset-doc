@@ -25,7 +25,7 @@ Before beginning the lab, please prepare the following equipment:
 - 2 to 6 wires
 - 1 USB cable
 
-# Step 1.1 - What is Breadboard?
+## Step 1.1 - What is Breadboard?
 
 A breadboard is a reusable board for building and testing circuits without soldering. Its surface is covered in small holes with metal clips underneath, so you just push a component’s leg or a jumper wire into a hole, and it’s connected. In the main area, the holes are linked in short strips of five, called terminal strips. A gap runs down the middle to split each row into two separate halves. Along the long edges are the power rails, usually marked with a red (+) and a blue (−) line, and each one is connected along its whole length. The name comes from the early days of electronics, when people built circuits by hammering nails into actual wooden breadboards. Today’s version is cheap, quick to use, and easy to change, which makes it perfect for trying out ideas.
 
@@ -39,7 +39,7 @@ To understand how the holes in a breadboard are connected electrically, please s
 
 ![Breadboard Connections](https://github.com/queens-satellite-team/Space-School/blob/main/lab01-getting-started-with-arduinos/lab1-images/breadboard_diagram.png)
 
-# Step 1.2 - What is LED?
+## Step 1.2 - What is LED?
 
 An LED (light-emitting diode) is a small electronic part that glows when electric current flows through it. Inside is a tiny chip made from a semiconductor material. When electrons pass through it, they release energy as light, and the exact material decides the colour. That’s also why different colours need different forward voltages: about 2 V for red and about 3 V for blue or white. LEDs use far less energy than old light bulbs, last for years, and switch on and off instantly. That makes them perfect as indicator lights, which is why they show up on almost every electronic device, including your Arduino board itself.
 
@@ -51,7 +51,7 @@ To understand more about this relationship between LEDs' colour and forward volt
 
 ![LED Table](https://i.pinimg.com/originals/58/7c/c7/587cc78a9c6147c7e6f13afd0389cd79.jpg)
 
-# Step 1.3 - What is Resistor?
+## Step 1.3 - What is Resistor?
 
 A resistor is a small electronic part that limits how much electric current flows through a circuit. It works like a narrow section of pipe that slows down the water flowing through it. Resistance is measured in ohms (Ω), and the coloured bands painted around the resistor tell you its value and how precise it is. For example, red, red, brown, gold means 220 Ω with ±5% tolerance. Resistors have two main jobs in a circuit. They protect parts like LEDs from too much current, and when two are connected in a row, they can divide a voltage down to a smaller, safer level. They’re cheap and simple, and they appear in almost every electronic device.
 
@@ -119,44 +119,30 @@ The '*Upload*' button will upload the software into the hardware so the Arduino 
 
 # Step 3 - Blinky Test
 
-## Step 3.1 - Blinky Hardware
-We are going to be attaching all of our components on a breadboard. To understand how the holes in a breadboard are connected electrically, please see the diagram below. 
+So you learnt a bit of the basics now. Time to build your circuit.
 
-![Breadboard Connections](https://github.com/queens-satellite-team/Space-School/blob/main/lab01-getting-started-with-arduinos/lab1-images/breadboard_diagram.png)
+Steps:
+1. Connect your Arduino to the breadboard.
+2. Connect a wire from pin D12 (this pin was arbitrarily selected) to one end of your resistor.
+4. Regarding the LED, these devices are polarity sensitive, which means it matters which way you place it in the circuit.\
+If you place it the wrong way, the circuit will not work. The shorter leg of the LED is the cathode '*(negative terminal)*' and the longer leg is the anode '*(positive terminal)*'.\
+Connect the anode to one end of the resistor.
+6. Connect a wire from the cathode of your LED to the Arduion's ground pin.
 
 Some things to note:
-- The Arduino is limited to a 15 mA output current for each of it's input/output pins acording to the [specifications](https://docs.arduino.cc/hardware/nano-every) provided by Arduino. 
-- As an optional exercise, determine the minimum size resistor to be included in this circuit! Note that we can approxiate that the LED will have a constant voltage drop of ~0.7V in this circuit. It is not expected that you know how to do this yet.
+- The Arduino is limited to a 40 mA output current for each of its input/output pins according to the [specifications](https://docs.arduino.cc/hardware/uno-rev3/) provided by Arduino. 
+- As an optional exercise, determine the minimum size resistor to be included in this circuit! Note that we can approximate that the LED will have a constant voltage drop of ~0.7 V in this circuit. It is not expected that you know how to do this yet.
 
 We are now going to connect our components on the breadboard using the diagram below as a reference.
 
-Equipment:
-- 1 Arduino Nano Every
-- 1 breadboard
-- 1 USB cable
-- 1 220 ohm resistor
-- 1 LED light
-- 2 wires
+![LAB 1 circuit](https://imgur.com/a/xRvq6ym.png)
+
+Open your Arduino IDE now
 
 Steps:
-1. Connect your Arduino Nano Every to the breadboard.
-2. Connect a wire from pin D12 (this pin was arbitrarily selected) to one end of your resistor.
-3. Regarding the LED, these devices are polarity sensitive which means it matters which way you place it in the circuit. If you place it the wrong way the circuit will not work. The shorter leg of the LED is the cathode *(negative terminal)* and the longer leg is the anode *(positve terminal)*. Connect the anode to one end of the resistor.
-4. Connect a wire from the cathode of your LED to the Arduion's ground pin.
-
-Your setup should look something like this:
-
-![Blinky Hardware Setup](https://github.com/queens-satellite-team/Space-School/blob/main/lab01-getting-started-with-arduinos/lab1-images/blinking_led_breadboard_ex.jpg)
-
-## Step 3.2 - Blinky Software
 1. Replace your code in the text box with the following. 
 
 ```
-// Title:         Blinky Program
-// Last Updated:  September 20th, 2022
-// Author:        < your name here >
-// Breif:         Simple program to make sure our hardware setup is working.  
-
 void setup() {
   pinMode(12, OUTPUT);
 }
@@ -172,30 +158,28 @@ void loop() {
 Let us take a look at some of these new functions that we are using! 
 
 `pinMode(12, OUTPUT);`
-- This lets the Arduino know that we want to use pin 8 as an ouput. This function can set pins to either input or output and can assign any of the digital pins. 
+- This lets the Arduino know that we want to use pin 8 as an output. This function can set pins to either input or output and can assign any of the digital pins. 
 
 `digitalWrite(12, HIGH);`
 `digitalWrite(12, LOW);`
-- This changes wether or not the specified pin has a high voltage (5V) or a low voltage (0V). The digital pins are limited to these high and low states, and are typically 5V ouputs unless specified. 
+- This changes whether or not the specified pin has a high voltage (5V) or a low voltage (0V). The digital pins are limited to these high and low states, and are typically 5V outputs unless specified. 
 
 Again, more information regarding these and all the Arduino functions can be found [here](https://www.arduino.cc/reference/en/). This is a wonderful reference tool, and something to keep handy going forward.
 
-2. Save your file with a name of your choice.
+2. Go to Tools -> Board -> Boards Manager and install the package with the Arduino that your group has been given.
 
-3. Go to Tools -> Board -> Boards Manager and install the package with the Arduino that your group has been given.
-
-4. Verify your script using the Verify button in the top left corner. You should see a message "Done compiling" to indicate that it is complete as well as a message resembling:
+3. Verify your script using the Verify button in the top left corner. You should see a message "Done compiling" to indicate that it is complete, as well as a message resembling:
 ```
 Sketch uses 2838 bytes (5%) of program storage space. Maximum is 49152 bytes.
 Global variables use 177 bytes (2%) of dynamic memory, leaving 5967 bytes for local variables. Maximum is 6144 bytes.
 ```
 
-## Step 3.3 - Putting It All Together
-1. Plug your Arduino into your computer using USB cable.
+# Step 4 - Putting It All Together
+1. Plug your Arduino into your computer using a USB cable.
 
 2. Go to Tools -> Port and select your board.
 
-3. Upload your script using the Upload button in the top left corner. You should see a message "Done uploading".
+3. Upload your script using the Upload button in the top left corner. You should see a message '*Done uploading*'.
 
 4. You should now see your LED blinking!
 
