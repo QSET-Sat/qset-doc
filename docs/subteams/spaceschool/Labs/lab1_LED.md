@@ -137,6 +137,10 @@ We are now going to connect our components on the breadboard using the diagram b
 
 ![LAB 1 circuit](https://i.postimg.cc/9Qd5XmQY/Whats-App-Image-2026-10-20-at-15-20-10.jpg)
 
+
+
+
+
 Open your Arduino IDE now
 
 Steps:
