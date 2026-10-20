@@ -1,19 +1,21 @@
 # Introduction
 
-Hello! Welcome to the first lab of Space School! In this lab we will begin with getting the Arduino IDE up and running, then we will start exploring some of the different ways we can program our Arduino board to do some fun little actions for us. 
+Hello! Welcome to the first circuit lab of Space School! In this lab, we will begin by understanding the logic behind some of the circuit design and Arduino programming, and then we will start exploring some of the different ways we can program our Arduino board to do some fun little actions for us. 
 
-If you have any questions please feel free to reach out to Sydney Caulfeild, Thomas Sears, Emma Paczkowski, Sean Tedesco, or any other member of the QSAT Team. Contact info can be found at the main page of this repository. 
+If you have any questions, please feel free to reach out to any other member of the QSAT Team. Contact info for the current manager can be found on the main page of this repository. 
 
 # Goals of Lab 1 
 
-1️⃣  Understanding the Arduino IDE
+1️⃣  Understanding Circuit Design
 
-2️⃣  Building a blinky LED program and circuit
+2️⃣  Understanding Arduino Programming
+
+3️⃣  Building a blinky LED program and circuit
 
 ## What is an Arduino? 
-An Arduino is a [microcontroller](https://www.youtube.com/watch?v=CqrQmQqpHXc), or a small computer than can perform instructions that we write. We can write a program - a series of instructions - that tells this small computer how it should interact with sensors, lights, and various input from human-users. We will be using these Arduinos as the on-board computer for our ToastSat, which is one of the six subsystems of our satellite. The basic parts of an Arduino Nano (the board you have today) are outlined below:
+An Arduino is a [microcontroller](https://www.youtube.com/watch?v=CqrQmQqpHXc), or a small computer than can perform instructions that we write. We can write a program - a series of instructions - that tells this small computer how it should interact with sensors, lights, and various input from human-users. We will be using these Arduinos as the on-board computer for our ToastSat, which is one of the six subsystems of our satellite. The basic parts of an Arduino Uno (the board you have today) are outlined below:
 
-![Tour of the Arduino Nano](https://github.com/queens-satellite-team/Space-School/blob/main/lab01-getting-started-with-arduinos/lab1-images/arduino_nano_every_diagram.png)
+![Tour of the Arduino](https://cdn.shopify.com/s/files/1/0559/1970/6265/files/35_ffab0d1e-5784-44f0-86dd-ca55a2bf5885_2048x2048.png?v=1692267058)
 
 Some key things to note:
 - D stands for digital and A stands for analog. You can read more about signal types [here](https://learn.sparkfun.com/tutorials/analog-vs-digital/all).
