@@ -188,16 +188,21 @@ Global variables use 177 bytes (2%) of dynamic memory, leaving 5967 bytes for lo
 
 Is your LED blinking as expected? Let’s explore what resistors can do!
 
-## Test 1: Changing the resistance
-Our circuit uses a 330 Ω resistor. Before you change anything, predict: what will happen to the LED if the resistance goes up?\
-Now unplug the Arduino, swap the 330 Ω for a 1 kΩ resistor, and plug it back in. Then try 10 kΩ.
+### Test 1: Changing the resistance
 
-- What happened to the brightness?
-- Use Ohm’s law to explain why. Ohm’s law: R = (supply voltage − LED voltage) ÷ current.
+Your circuit uses a 330 Ω resistor in series with the LED.
+
+1. Predict: what will happen to the LED if you use a bigger resistor?
+2. Swap the 330 Ω for a 1 kΩ (brown, black, red, gold). Then try a 10 kΩ (brown, black, orange, gold).
+3. What happened to the brightness? Was your prediction right? 
 
 Don’t use a resistor below 220 Ω, as it can damage the LED or the Arduino pin. ⚠️ 
 
-## Test 2: Now we can rebuild part of our circuit. Please follow the provided diagram below and build a voltage divider in our circuit. 
+### Test 2: Controlling the LED with a voltage divider
 
+1. Rebuild your circuit based on the diagram below
+2. Predict: what will happen to the LED if you use a bigger R2?
+3. Keep R1 the same, then start with a 220 Ω (red, red, brown, gold), then swap R2 for a 330 Ω (orange, orange, brown, gold), then a 1 kΩ (brown, black, red, gold), then a 10 kΩ (brown, black, orange, gold). Finally, remove R2 completely.
+4. What happened to the brightness? Was your prediction right? How is it different from Test 1?
 
-
+Always keep R1 (330 Ω) in place. It protects the LED and the Arduino pin, whatever R2 you use. ⚠️ 
