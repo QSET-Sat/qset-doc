@@ -39,14 +39,14 @@ The week numbers correspond to the weeks of the school semester.
 - Week 7, Lab 4: Soldering I
 - Week 8, Lab 5: PCB Design
 - Week 9: Intro to satellite missions (ToastSat)
-- Week 10 - 12: Brainstorming on what mission and sensors you will use (Workshop Time)
+- Week 10-12: Brainstorming on what mission and sensors you will use (Workshop Time)
 
 **Semester Two - Winter** (to be confirmed)
 
-- Weeks 1-12: Working on ToastSats to be launched!
-- Week 1, Lab 6: Unknown
-- Week 2, Lab 7: Unknown
-- Week 3, Lab 8: Unknown
+- Week 2, Lab 6: Unknown
+- Week 3, Lab 7: Unknown
+- Week 4, Lab 8: Unknown
+- Weeks 2-12: Working on ToastSats to be launched! (Workshop Time)
 - The remainder of the semester will be spent integrating all members into a sub-team of their choice
 
 ## Feedback
