@@ -206,3 +206,6 @@ Don’t use a resistor below 220 Ω, as it can damage the LED or the Arduino pin
 4. What happened to the brightness? Was your prediction right? How is it different from Test 1?
 
 Always keep R1 (330 Ω) in place. It protects the LED and the Arduino pin, whatever R2 you use. ⚠️ 
+
+![LAB 1 extra circuit](https://i.postimg.cc/2ycwNZN2/led-divider-control.png)
+
