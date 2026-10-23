@@ -1,4 +1,4 @@
-#Message from Space School Manager (2026 - 2027)
+# Message from Space School Manager (2026 - 2027)
 
 That's a brief list of what our space school can do over the year under any recruiting circumstances
 This plan should be used to better prepare next year space and overall qsat quality
@@ -35,7 +35,7 @@ email
 
 
 
-#Message from Captain
+# Message from Captain
 
 ### 1. First-Year Applied Engineering Guest Lectures
 * **Proposed Activities:** Deliver dedicated guest application modules in high-enrollment first-year undergraduate courses (e.g., Classical Mechanics, Linear Algebra, Integral Calculus, and Introductory Circuits). Lectures connect foundational math and physics concepts directly to active CubeSat engineering problems, such as attitude determination algorithms, orbital decay simulations, and solar array power budgeting.
