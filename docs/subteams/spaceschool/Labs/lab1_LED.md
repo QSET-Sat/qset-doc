@@ -175,6 +175,7 @@ Global variables use 177 bytes (2%) of dynamic memory, leaving 5967 bytes for lo
 ```
 
 # Step 4 - Putting It All Together
+
 1. Plug your Arduino into your computer using a USB cable.
 
 2. Go to Tools -> Port and select your board.
@@ -182,4 +183,21 @@ Global variables use 177 bytes (2%) of dynamic memory, leaving 5967 bytes for lo
 3. Upload your script using the Upload button in the top left corner. You should see a message '*Done uploading*'.
 
 4. You should now see your LED blinking!
+
+# Step 5 - Extra Exercise
+
+Is your LED blinking as expected? Let’s explore what resistors can do!
+
+## Test 1: Changing the resistance
+Our circuit uses a 330 Ω resistor. Before you change anything, predict: what will happen to the LED if the resistance goes up?\
+Now unplug the Arduino, swap the 330 Ω for a 1 kΩ resistor, and plug it back in. Then try 10 kΩ.
+
+- What happened to the brightness?
+- Use Ohm’s law to explain why. Ohm’s law: R = (supply voltage − LED voltage) ÷ current.
+
+Don’t use a resistor below 220 Ω, as it can damage the LED or the Arduino pin. ⚠️ 
+
+## Test 2: Now we can rebuild part of our circuit. Please follow the provided diagram below and build a voltage divider in our circuit. 
+
+
 
