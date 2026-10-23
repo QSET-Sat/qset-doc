@@ -1,12 +1,12 @@
-Space School (2026 - 2027)
+#Message from Space School Manager (2026 - 2027)
 
-That's a breif list on what we space school can do over the year under any recruiting circumstances
-this plan should be used to better prepare next year space and overall qsat quality
+That's a brief list of what our space school can do over the year under any recruiting circumstances
+This plan should be used to better prepare next year space and overall qsat quality
 
 1. Outreach connection
-  this year school school sent two invitation mail to two private schools in Kingston to recruit highschool student to experience university level labs and project through a session of hand on hand learning.
-  *potiential plan could be seting up a channel with kingston education intuition school board or individual private school in local.
-  another thing could be 
+  this year school school sent two invitation emails to two private schools in Kingston to recruit high school students to experience university-level labs and projects through a session of hands-on learning.
+  * Potential plan could be setting up a channel with Kingston Education, the Kingston School Board, or individual private schools in the local.
+  Another thing could be 
 
 2. Labs
   currently space school only has five to six technical labs, including kicad, solidering, three beginner curcuit introduction. 
@@ -34,7 +34,8 @@ feedback form
 email
 
 
-Message from Captain
+
+#Message from Captain
 
 ### 1. First-Year Applied Engineering Guest Lectures
 * **Proposed Activities:** Deliver dedicated guest application modules in high-enrollment first-year undergraduate courses (e.g., Classical Mechanics, Linear Algebra, Integral Calculus, and Introductory Circuits). Lectures connect foundational math and physics concepts directly to active CubeSat engineering problems, such as attitude determination algorithms, orbital decay simulations, and solar array power budgeting.
