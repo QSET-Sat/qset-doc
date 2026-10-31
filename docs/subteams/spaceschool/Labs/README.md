@@ -5,15 +5,15 @@ Aiming to retire all old boards by Summer 2027
  
 | # | Lab | Board | Key parts | Status |
 |---|---|---|---|---|
-| 01 | Testing Series – Ultrasonic Hot Wheels | - | New (Second Year Only) |
-| 1 | Basic I - LED | - | Existing |
-| 2 | Sensor I – Weather Station | Nano Every, TMP36, BME280, MS8607 | New (replaces TMP36 lab) |
-| 3 | Sensor II – Optics | Nano Every, GUVA-S12SD UV, VEML7700, AS7341 | New |
-| 4 | Introduction to Raspberry Pi Pico Programming | Pico 2 WH | New |
+| 01 | Testing Series – Ultrasonic Hot Wheels | - | - |New (Second Year Only) |
+| 1 | Basic I - LED | Nano Every | - | Existing |
+| 2 | Sensor I – Weather Station | Nano Every | TMP36, BME280, MS8607 | - | New (replaces TMP36 lab) |
+| 3 | Sensor II – Optics | Nano Every| GUVA-S12SD UV, VEML7700, AS7341 | New |
+| 4 | Introduction to Raspberry Pi Pico Programming | Pico 2 WH | - | New |
 | 5 | Sensor III – Motion Tracking | Pico 2 | LIS3DH, QMC5883P | New |
 | 6 | Data Management Security | Pico 2 / Nano Every | SD card reader modules, microSD cards, INA219, supercapacitor | New (replaces SD card reader lab) |
-| 7 | Soldering I – Basics and Disassembly | – | New (replaces original soldering lab) |
-| 8 | Soldering II – Introduction to Smaller Circuit Design | – | New |
+| 7 | Soldering I – Basics and Disassembly | – | - | New (replaces original soldering lab) |
+| 8 | Soldering II – Introduction to Smaller Circuit Design | – | - | New |
 | 9 | Electronics I – Introduction to PCB Design | – | KiCad | Existing |
 | 10 | Electronics II – Introduction to Chip Design | – | TBD | Future |
 | 11 | Communication I – Radio Transmission | Pico 2 | RFM95W LoRa (915 MHz), antennas | New |
