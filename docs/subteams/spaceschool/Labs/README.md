@@ -7,7 +7,7 @@ Aiming to retire all old boards by Summer 2027
 |---|---|---|---|---|
 | 01 | Testing Series – Ultrasonic Hot Wheels | - | - |New (Second Year Only) |
 | 1 | Basic I - LED | Nano Every | - | Existing |
-| 2 | Sensor I – Weather Station | Nano Every | TMP36, BME280, MS8607 | - | New (replaces TMP36 lab) |
+| 2 | Sensor I – Weather Station | Nano Every | TMP36, BME280, MS8607 | New (replaces TMP36 lab) |
 | 3 | Sensor II – Optics | Nano Every| GUVA-S12SD UV, VEML7700, AS7341 | New |
 | 4 | Introduction to Raspberry Pi Pico Programming | Pico 2 WH | - | New |
 | 5 | Sensor III – Motion Tracking | Pico 2 | LIS3DH, QMC5883P | New |
