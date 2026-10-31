@@ -28,19 +28,19 @@ Aiming to retire all old boards by Summer 2027
 ### 1 – Basic I: LED 
 Introducing Nano Every and early electronics knowledge. 
 
-### 2 – Sensor I: Weather Station
+### 2 – Sensor I: Weather Station (Not Ready Yet)
 Measure temperature, humidity and pressure. Read the analog TMP36 by hand (voltage → °C), then use the digital BME280 and MS8607 over I²C. Compare accuracy between sensors and log readings to an SD card.
  
-### 3 – Sensor II: Optics
+### 3 – Sensor II: Optics (Not Ready Yet)
 Measure UV, brightness (lux) and colour spectrum. Compare light sources, test filters, and log sky colour through a sunset to explore Rayleigh scattering.
  
-### 4 – Introduction to Raspberry Pi Pico Programming
+### 4 – Introduction to Raspberry Pi Pico Programming (Not Ready Yet)
 Move from the Nano Every to the Pico 2. Compare 5 V and 3.3 V logic, ADC ranges and references, memory and I²C buses. Port an earlier sensor sketch to the Pico.
  
-### 5 – Sensor III: Motion Tracking
+### 5 – Sensor III: Motion Tracking (Not Ready Yet)
 Use an accelerometer and magnetometer to measure tilt, motion, free fall and compass heading. Calibrate the magnetometer and see how nearby electronics distort it.
  
-### 6 – Data Management Security
+### 6 – Data Management Security (Not Ready Yet)
 Protect data from power loss and corruption. Compare RAM and non-volatile storage, test what survives a power cut, add buffering and `flush()`, detect power failure with the INA219, and use a supercapacitor to finish saving. Add checksums to detect corrupted rows.
  
 ### 7 – Soldering I: Basics and Disassembly 
