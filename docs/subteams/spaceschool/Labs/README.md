@@ -1,6 +1,6 @@
 # Lab Design Plan (since 2026)
  
-**Boards used:** Arduino Nano Every (5 V) and Raspberry Pi Pico 2 WH (3.3 V)
+**Boards used:** Arduino Nano Every (5 V) and Raspberry Pi Pico 2 WH (3.3 V)\
 Aiming to retire all old boards by Summer 2027
  
 | # | Lab | Board | Key parts | Status |
