@@ -1,5 +1,7 @@
 # Introduction
 
+Last Update (October 2026, Alvin Kwok 23xmy@queensu.ca)
+
 Hello! Welcome to the first circuit lab of Space School!\
 In this lab, we will begin by understanding the logic behind some of the circuit design and Arduino programming, and then we will start exploring some of the different ways we can program our Arduino board to do some fun little actions for us. 
 
