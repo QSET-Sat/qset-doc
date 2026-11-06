@@ -95,15 +95,15 @@ KiCad is a free, open-source software suite for designing electronic circuits an
 
 KiCad is made up of several tools that work together:
 
-1. Schematic Editor: Draw the circuit using component symbols, and connect them with wires to show how they’re electrically linked\
-2. Symbol Editor: Create a new schematic symbol, or edit an existing one, when the part you need isn’t in the library\
-3. PCB Editor: Turn the schematic into a physical board by placing footprints, drawing the board outline, and routing copper traces\
-4. Footprint Editor: Create or edit a part’s footprint, which is the physical layout of its pads on the board\
-5. Gerber Viewer: Open the exported fabrication files to check exactly what the manufacturer will receive\
-6. Image Converter: Turn a picture, like a logo, into a symbol or footprint that can be printed on the board\
-7. Calculator Tools: Do common electronics math, like choosing a safe trace width for a given current or picking resistor values\
-8. Drawing Sheet Editor: Customize the border and title block on schematic pages (project name, author, date)\
-9. Plugin and Content Manager: Download extra libraries, plugins, and colour themes made by the KiCad community\
+- **Schematic Editor:** Draw the circuit using component symbols, and connect them with wires to show how they’re electrically linked.
+- **Symbol Editor:** Create a new schematic symbol, or edit an existing one, when the part you need isn’t in the library.
+- **PCB Editor:** Turn the schematic into a physical board by placing footprints, drawing the board outline, and routing copper traces.
+- **Footprint Editor:** Create or edit a part’s footprint, which is the physical layout of its pads on the board.
+- **Gerber Viewer:** Open the exported fabrication files to check exactly what the manufacturer will receive.
+- **Image Converter:** Turn a picture, like a logo, into a symbol or footprint that can be printed on the board.
+- **Calculator Tools:** Do common electronics math, like choosing a safe trace width for a given current or picking resistor values.
+- **Drawing Sheet Editor:** Customize the border and title block on schematic pages (project name, author, date).
+- **Plugin and Content Manager:** Download extra libraries, plugins, and colour themes made by the KiCad community.
 
 ## Step 2.1 - Setup KiCad
 
@@ -132,15 +132,47 @@ To get started, download the required software from the [KiCad Download Page.](h
 
 Start a new project by doing `File>New Project` and name it something generic eg. “Prototype 1”.
 
-### Schematic 
+### Schematic Editor
 
 Click on Schematic Editor on KiCad's main page to switch to schematic design. You should be presented with the view as seen below:
 
 ![image](https://i.postimg.cc/WzWp417Q/Whats-App-Image-2026-11-06-at-07-01-31.jpg)
 
+The Schematic Editor has three toolbars. The **top toolbar** handles the whole project, the **right toolbar** has the tools for drawing your circuit, and the **left toolbar** changes how things are displayed.
 
+### Top Toolbar (Managing the Project)
 
+- **Save** (`Ctrl+S`): Saves your schematic. Save often!
+- **Annotate Schematic:** Numbers your components automatically (R1, R2, D1…), which gives each part its reference designator.
+- **Electrical Rules Checker (ERC):** Checks your schematic for mistakes, like unconnected pins or two outputs wired together. Run it before moving on to the PCB.
+- **Assign Footprints:** Links each symbol to its physical footprint, the pad layout it will use on the board.
+- **Switch to PCB Editor:** Opens the PCB Editor, where you lay out the board using this schematic.
 
+![image](https://i.postimg.cc/yY8thPVN/Whats-App-Image-2026-11-06-at-07-44-21.jpg)
+
+### Right Toolbar (Drawing Your Circuit)
+
+These are the buttons you will use the most:
+
+- **Select:** The default arrow tool for clicking, selecting, and moving things. Press `Esc` at any time to return to it.
+- **Place Symbol** (`A`): Opens the symbol library so you can search for a component, like a resistor or LED, and place it.
+- **Place Power Symbol** (`P`): Places power and ground symbols, such as +5V and GND.
+- **Place Wire** (`W`): Draws wires between the pins of components. Click to start, click to bend, and double-click to finish.
+- **Place Bus** (`B`): Draws a bus, a thick line that groups many related signals into one, such as the 8 data lines `D0` to `D7`. A bus keeps the schematic tidy when lots of wires travel together, but it doesn't connect anything by itself.
+- **Place Wire to Bus Entries** (`Z`): Places a small angled piece that joins a single wire to a bus, showing where that signal enters or leaves the group.
+- **Place No-Connect Flag** (`Q`): Marks a pin that is meant to be left unconnected, so KiCad doesn't flag it as an error.
+- **Place Junctions** (`J`): Places a dot where wires that cross should connect. KiCad usually adds these automatically.
+- **Place Net Labels** (`L`): Gives a wire a name. Any wires with the same label are connected, even if no wire is drawn between them.
+
+![image](https://i.postimg.cc/WzWp417Q/Whats-App-Image-2026-11-06-at-07-01-31.jpg)
+
+### Left Toolbar (Display Options)
+
+These buttons don't change your circuit. They only change what you see, like showing or hiding the grid and switching between mm and inches. You can usually leave them alone.
+
+### PCB Editor 
+
+## Step 2.3 - Rebuilding Circuit
 
 
 
