@@ -26,15 +26,15 @@ KiCad is a free, open-source software suite for designing electronic circuits an
 
 KiCad is made up of several tools that work together:
 
-Schematic Editor: Draw the circuit using component symbols, and connect them with wires to show how they’re electrically linked\
-Symbol Editor: Create a new schematic symbol, or edit an existing one, when the part you need isn’t in the library\
-PCB Editor: Turn the schematic into a physical board by placing footprints, drawing the board outline, and routing copper traces\
-Footprint Editor: Create or edit a part’s footprint, which is the physical layout of its pads on the board\
-Gerber Viewer: Open the exported fabrication files to check exactly what the manufacturer will receive\
-Image Converter: Turn a picture, like a logo, into a symbol or footprint that can be printed on the board\
-Calculator Tools: Do common electronics math, like choosing a safe trace width for a given current or picking resistor values\
-Drawing Sheet Editor: Customize the border and title block on schematic pages (project name, author, date)\
-Plugin and Content Manager: Download extra libraries, plugins, and colour themes made by the KiCad community\
+1. Schematic Editor: Draw the circuit using component symbols, and connect them with wires to show how they’re electrically linked\
+2. Symbol Editor: Create a new schematic symbol, or edit an existing one, when the part you need isn’t in the library\
+3. PCB Editor: Turn the schematic into a physical board by placing footprints, drawing the board outline, and routing copper traces\
+4. Footprint Editor: Create or edit a part’s footprint, which is the physical layout of its pads on the board\
+5. Gerber Viewer: Open the exported fabrication files to check exactly what the manufacturer will receive\
+6. Image Converter: Turn a picture, like a logo, into a symbol or footprint that can be printed on the board\
+7. Calculator Tools: Do common electronics math, like choosing a safe trace width for a given current or picking resistor values\
+8. Drawing Sheet Editor: Customize the border and title block on schematic pages (project name, author, date)\
+9. Plugin and Content Manager: Download extra libraries, plugins, and colour themes made by the KiCad community\
 
 ## Step 2.1 - Setup KiCad
 
