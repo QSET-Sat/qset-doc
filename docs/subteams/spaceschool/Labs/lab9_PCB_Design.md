@@ -164,7 +164,7 @@ These are the buttons you will use the most:
 - **Place Junctions** (`J`): Places a dot where wires that cross should connect. KiCad usually adds these automatically.
 - **Place Net Labels** (`L`): Gives a wire a name. Any wires with the same label are connected, even if no wire is drawn between them.
 
-![image](https://i.postimg.cc/WzWp417Q/Whats-App-Image-2026-11-06-at-07-01-31.jpg)
+![image](https://i.postimg.cc/26nh0wL3/Whats-App-Image-2026-11-06-at-13-19-27.jpg)
 
 ### Left Toolbar (Display Options)
 
@@ -172,171 +172,118 @@ These buttons don't change your circuit. They only change what you see, like sho
 
 ### PCB Editor 
 
+Click on Schematic Editor on KiCad's main page to switch to schematic design. You should be presented with the view as seen below:
+
+![image](https://i.postimg.cc/wxb8BhjK/Whats-App-Image-2026-11-06-at-14-53-08.jpg)
+
+The PCB Editor has the same three toolbars as the Schematic Editor, plus an **Appearance panel** on the far right. The **top toolbar** handles the whole board, the **right toolbar** has the tools for laying out your board, the **left toolbar** changes how things are displayed, and the **Appearance panel** lets you choose which layer you are working on.
+
+### Top Toolbar (Managing the Board)
+
+- **Save** (`Ctrl+S`): Saves your board. Save often!
+- **Board Setup:** Sets the rules for your board, such as the number of copper layers, the default trace width, and the minimum spacing between copper.
+- **3D Viewer** (`Alt+3`): Opens a 3D model of your finished board, so you can see what it will look like once it's made.
+- **Update PCB from Schematic** (`F8`): Brings in any changes you made to the schematic. Run this every time you edit the schematic.
+- **Design Rules Checker (DRC):** Checks your board for mistakes, like traces too close together, missing connections, or a broken board outline. Run it before exporting your board.
+
+![image](https://i.postimg.cc/7ZJx4K1q/Whats-App-Image-2026-11-06-at-14-50-41.jpg)
+
+### Right Toolbar (Laying Out Your Board)
+
+These are the buttons you will use the most:
+
+- **Select:** The default arrow tool for clicking, selecting, and moving things. Press `Esc` at any time to return to it.
+- **Add Footprint** (`A`): Places a footprint on the board. You usually won't need this, because footprints come over from the schematic automatically.
+- **Route Single Track** (`X`): Draws copper traces between pads. Follow the thin ratsnest lines, which show which pads still need to be connected. Click to start, click to bend, and double-click to finish.
+- **Tune Length of a Single Track:** Adds a zigzag pattern (called a meander) to a track to make it longer, until it reaches a target length. This is used for high-speed signals, like USB or memory lines, where signals need to arrive at exactly the same time. You won't need it for a simple board, but it's why you sometimes see squiggly traces on computer boards.
+- **Add Via** (`Ctrl+Shift+V`): Places a via on its own. While routing a track, you can also press `V` to drop a via and continue the track on the other side of the board.
+- **Add Filled Zone** (`Ctrl+Shift+Z`): Draws an area that fills with copper, usually connected to GND. This is called a ground plane or copper pour.
+- **Add Rule Area:** Draws an area where certain things are not allowed, such as tracks, vias, copper pours, or footprints. This is also called a keepout area. It's useful around mounting holes, so traces don't run under a screw head or under an antenna, where copper would block the signal.
+- **Draw Lines, Rectangles, Circles, and Arcs:** Draws shapes on whichever layer is selected. Select the **Edge.Cuts** layer first, and use these tools to draw your board outline.
+- **Add Text:** Adds text to the board, such as your name or project name. Make sure the **F.Silkscreen** layer is selected so the text is printed on the board.
+
+![image](https://i.postimg.cc/bvBYf4WP/Whats-App-Image-2026-11-06-at-15-06-53.jpg)
+
+### Left Toolbar (Display Options)
+
+These buttons don't change your board. They only change what you see.
+
+### Appearance Panel (Layers)
+
+The panel on the right side lists every layer of the board. Click a layer's name to make it the active layer, and click the eye icon to show or hide it. The layers you will use most are:
+
+- **F.Cu and B.Cu**: The front and back copper, where traces and pads go.
+- **F.Silkscreen:**: The printed labels and text on the front of the board.
+- **Edge.Cuts**: The board outline.
+
+![image](https://i.postimg.cc/J7Xcy81G/Whats-App-Image-2026-11-06-at-14-44-46.jpg)
+
+### Fabrication
+Gerber and Drill Files are what we need to give the manufacturer in order to make our PCB. 
+[Offical Guide](https://jlcpcb.com/help/article/how-to-generate-gerber-and-drill-files-in-kicad-9)
+
+- To create gerber and drill files go to the PCB layout and then select `File>Fabrication Outputs>Gerbers (.gbr)` and you will be greeted with this:
+
+![image](https://i.postimg.cc/WzXn7nCB/Whats-App-Image-2026-11-06-at-13-34-45.jpg)
+
+#### Step 1
+
+- Fill in the Output directory field with a generic name eg. “Prototype 1 Final”.
+
+#### Step 2
+
+- Tick exactly the layers your board needs on the include layers list
+
+Required Layers for a 2-Layer Board
+
+- **F.Cu and B.Cu**: front and back copper.
+- **F.Mask and B.Mask**: solder mask openings.
+- **F.Silkscreen and B.Silkscreen**: the printed legend.
+- **Edge.Cuts**: the board outline.
+- Add **F.Paste and B.Paste** as well if you are ordering an SMT stencil or SMT assembly.
+
+Note: Layer names can be changed in File → Board Setup → Board Editor Layers. A renamed layer still plots to the same Protel extension, so a renamed In1.Cu is still written as .G1. If your list does not match the names above, check that dialog before assuming a layer is missing.
+
+Required Layers for a Multilayer Board
+
+Keep F.Cu, B.Cu and every inner copper layer your stackup defines, in addition to the mask, silkscreen and Edge.Cuts layers above:
+
+- **In1.Cu and In2.Cu**: 4 layer board
+- **In1.Cu through In4.Cu**: 6 layer board
+- **In1.Cu through In6.Cu**: 8 layer board
+
+#### Step 3
+
+- **Check zone fills before plotting**: Tick to regenerate copper pours before creating Gerbers.
+- **Use Protel filename extensions**: Tick for standard layer names recognized by PCB manufacturers.
+- **Use extended X2 format**: Tick to embed layer metadata in the Gerber files.
+- **Include netlist attributes**: Tick to improve DFM checks for shorts and opens.
+- **Click Plot**: Verify Errors = 0 and Warnings = 0 before proceeding.
+
+#### Step 4
+
+Click '*Generate Drill Files*' after final confirmation
+
+![image](https://i.postimg.cc/9XYq9QqJ/Whats-App-Image-2026-11-06-at-14-06-38.jpg)
+
+- **Drill file format**: Select Excellon as the standard drill format used by PCB manufacturers.
+- **Use alternate drill mode for oval holes**: Tick to generate accurate slots and oval holes.
+- **Origin**: Set to Absolute to match the Gerber coordinate system.
+- **Units**: Select Millimeters.
+- **Zeros**: Choose Decimal format (recommended) to avoid zero-suppression errors.
+
+Click '*Generate*' after final confirmation
+
+![image](https://i.postimg.cc/mrrGmVdk/Whats-App-Image-2026-11-06-at-14-16-19.jpg)
+
 ## Step 2.3 - Rebuilding Circuit
 
 
 
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103165208.png)
-Our circuit requires specific ICs in order to work correctly. Due to this, there are specific pin-out and sizing constraints we must follow in order to make sure the theoretical design matches the actual implementation. 
+# Step 3 - Putting It All Together
 
-To help us adhere to these constraints within our design phase, we need to use the actual model of the component within Altium. We can find majority of the components we need for development within the "Manufacturer Part Search" on tool bar on the right hand side of the screen.%%  %%
-**Note: If not there do `View>Panels>Manufactuer Part Search`**
+1. Go to Inspect > Design Rules Checker > Run DRC to ensure that your PCB design follows manufacturing capabilities and design rules.
 
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103112800.png)
+2. Follow the guide under **Fabrication** in section 2.2 to create gerber and drill files.
 
-From here, we can search for a component, and then place it within our schematic.
-
-For this example, we will search and place the following:
-- TMP36GT9Z (Temperature Sensor)
-- SparkFun Logic Level Converter - Bi-Directional (Logic Level Converter)
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103113038.png)
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103112937.png)
-
-### Schematic - Importing Files
-This project will need several component not normally found in Altium so we will need to import them. The files you need for this are present within this repository within the "resources" folder. These include:
-- Arudino Nano Every(ABX00028.IntLib)
-- SD Card Reader (MICROSD_SPI_OR_SDIO_CARD.IntLib)
-
-Drag each of these files into Altium and a window below should pop up where you want to select "Import". **If you are having issues with this, you can also do `Components>Import Library`**
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231102211819.png)
-
-Now you should have access to the schematic and layout of the component you dragged into Altium. To view the schematic, open up the components section and on the right hand side and click the drop down menu and select your component. 
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103103613.png)
-
-An item show show up and you can drag it into your schematic view.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103111511.png)
-
-Repeat the steps above for the SD Card reader.
-
-### Schematic - Nomenclature
-For better readiblity of the schematic, it is important to keep the names of your components relevant. To do this double click on the component to change properties of it's nomenclature. 
-
-For this example, change:
-- the name of "ABX00028" to something more readable like, “ARDUINO NANO EVERY” and change U? to U1
-- 
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103113955.png)
-
-- Change BOB-12009 to something more readable like, “LOGIC LEVEL CONVERTER” and U? to U2
-- 
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103114050.png)
-
-- Change "MICROSD_SPI_OR_SDIO_CARD" to "SD CARD" and U? to U3
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103151920.png)
-
-- Change "TMP36GT9Z" to "TMP36" and change U? to U4
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103152622.png)
-
-### Schematic - Wiring
-Now it is time to create the actual electrical connections for the circuit. To create a wire press (Ctrl+W) and click where you would like to make a connection. To create grounds within the circuits select the ground icon on your tool bar.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103154919.png)
-
-Place this ground close to your Arduino Nano Every by clicking. Connect this ground symbol to the GND on the component by using a wire, this should look something like this:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103154850.png)
-
-Do this for all other components in the schematic.
-
-Now, we want to have the same electrical functionality as the schematic below so copy how the pins are connected. **NOTE: Look at the LABEL of the pin not where it is on the schematic for the connection!** To do this we will copy the connections from our original schematic.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103152419.png)
-
-In addition to this, we also have the temperature sensor to connect. For this connect the following:
-
-| TMP36 | Arduino Nano Every |
-| ---- | ---- |
-|  VOUT  |  A1 |
-| +VS  | +5V |
-
-The final product should look something like the image below:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103160511.png)
-
-
-### Layout - Transform Schematic into Layout
-Now you are ready to take on the layout of the actual PCB. First do, `File>New>PCB` Update you PCB document, to do this click on `Design>Update PCB Document` in the tool bar.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103161057.png)
-
-You will be greeted with this screen detailing your many errors.... Ignore them and press `Execute Changes`!
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103161158.png)
-
-Now you will be met with the screen below showing the PCB and all the components you need to place on it. **Note: The TMP36 sensor is missing as it was added to the design later**
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103161253.png)
-
-### Layout - Size of PCB
-Press `1` to enter board planning mode. After we want to change the dimensions of the PCB so click `Design>Edit Board Shape`.  We will reshape the dimensions to be **10cm** by **7cm**
-![[Pasted image 20231103161522.png]]
-### Layout - Routing
-Press `2` to switch back to layout mode and move all the components to the center of the board. This can be seen below:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103163702.png)
-
-As you can see some of our nets cross so we will have to route our connections both on the top of the PCB and on the bottom to avoid these collisions.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103163756.png)
-
-First, we will route on the bottom layer so select it like so:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103163907.png)
-
-Now, hit `Ctrl+W` to begin routing your connections. Plan out what will go on the top and bottom to have the easiest time routing. Your bottom connections should look something like this.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164033.png)
-
-Hit `ESC` to stop routing and switch from the bottom layer to the top.
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164109.png)
-
-Now route the rest of your connections like before **Note: If you have issues will collisions do no be afraid to go back to the bottom layer and reroute things.** This should look something like this:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164252.png)
-
-With the temperature sensor the final product should look like this:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164452.png)
-
-### Layout - Silkscreen
-Now it is time to add your name(s) to the PCB! 
-
-Select the `Top Overlay` layer
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164607.png)
-
-Now click on the text button to add you name and the name of your PCB
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164637.png)
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164706.png)
-
-Now, we need to add branding to show off how cool the team is! Download the image provided in the repository of the QSET logo. Right Click and select `Place>Graphics` and select the QSET logo:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164920.png)
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164926.png)
-
-Tada, you now have a PCB that's final product should look something like below:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103164534.png)
-
-Press `3` for a cool 3D view look!
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103165032.png)
-
-### Fabrication - Generate Gerber Files
-Gerber files are what we need to give the manufacturer in order to make our PCB. To create a gerber files go to the PCB layout and then select `File>Fabrication Outputs>Gerber Files` and you will be greeted with this:
-
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103170149.png)
-
-Hit `Ctrl+S` to save the file and then navigate to your project folder and find your folder named 'Project Outputs'. Right click on it Zip it and send it to Nigel or Vanessa to order and complete the fabrication process.
-
-You have completed the PCB lab!
+3. You are ready to produce your PCB!
