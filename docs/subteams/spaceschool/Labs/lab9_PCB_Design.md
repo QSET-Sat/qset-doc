@@ -1,12 +1,65 @@
-## Description
+# Introduction
 
-The goal of this lab will be taking previous circuit theory and schematic knowledge and turning it into a PCB layout. The lab will be using the Electrical computer-aided design (ECAD) software [Altium](https://www.altium.com/)
+Last Update (November 2026, Alvin Kwok 23xmy@queensu.ca)
 
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231102211420.png)
-## Pre-Lab
+Hello! Welcome to the first PCB design lab of Space School!\
+In this lab, we will begin by running through some of the background knowledge on printed circuit boards themselves and KiCad software, and then we will try to reproduce some of the circuits from our previous labs with the software. 
 
-Download and install Altium designer (this is a pre-requisite and should be done BEFORE the lab). Since space school member are students of Queen's University they will be able to get a license for free from [Altium Education](https://www.altium.com/education/student-licenses)
-## During Lab
+If you have any questions, please feel free to reach out to any member of the QSAT Team.\
+Contact info for the current manager can be found on the main page of this repository. 
+
+# Goals of Lab 9
+
+1️⃣  Understanding Printed Circuit Boards
+
+2️⃣  Reproducing a schematic diagram and PCB layout for the circuit from Lab 6
+
+# Step 1 - Lab Hardware
+
+Before beginning the lab, please prepare the following equipment:
+
+- one personal laptop with KiCad software installed
+
+# Step 2 - What is KiCad
+
+KiCad is a free, open-source software suite for designing electronic circuits and printed circuit boards. It’s an EDA (Electronic Design Automation) tool, so it covers the whole process of turning an idea for a circuit into a board that can be manufactured. KiCad was started in 1992 by Jean-Pierre Charras, a researcher in France. Today it’s developed by a worldwide community of volunteers, with support from CERN and the Linux Foundation. It runs on Windows, macOS, and Linux, and it has no paid tiers, board size limits, or locked features.
+
+KiCad is made up of several tools that work together:
+
+Schematic Editor: Draw the circuit using component symbols, and connect them with wires to show how they’re electrically linked\
+Symbol Editor: Create a new schematic symbol, or edit an existing one, when the part you need isn’t in the library\
+PCB Editor: Turn the schematic into a physical board by placing footprints, drawing the board outline, and routing copper traces\
+Footprint Editor: Create or edit a part’s footprint, which is the physical layout of its pads on the board\
+Gerber Viewer: Open the exported fabrication files to check exactly what the manufacturer will receive\
+Image Converter: Turn a picture, like a logo, into a symbol or footprint that can be printed on the board\
+Calculator Tools: Do common electronics math, like choosing a safe trace width for a given current or picking resistor values\
+Drawing Sheet Editor: Customize the border and title block on schematic pages (project name, author, date)\
+Plugin and Content Manager: Download extra libraries, plugins, and colour themes made by the KiCad community\
+
+## Step 2.1 - Setup KiCad
+
+To get started, download the required software from the [KiCad Download Page.](https://www.kicad.org/download/)
+
+### KiCad For Windows
+1. Click the box with the Windows icon. 
+2. Click the box with the GitHub icon under 64-bit x64. 
+3. You should get an '.exe' file. Open the file, and the KiCad installer program will open. 
+4. Select '*Next*' to continue. 
+5. Make sure '*For me (user)*' is selected, and click '*Next*'. 
+6. Make sure all '*components to install*' are selected, and click '*Next*'. 
+7. It is recommended to keep the install directory as default, but feel free to change it if necessary. Then select '*Install*'. 
+8. Note: there maybe multiple '*Windows Security*' pop ups; these are expected, just click on '*Accept*' for each one. 
+9. Once installed, you can delete the ' .exe' file from your downloads folder. 
+10. You should now have a desktop icon for KiCad; click on this to start the software! 
+
+### KiCad For Macs 
+1. Click the box with the macOS icon. 
+2. Click the box with the GitHub icon under macOS 12 and newer. 
+3. Once downloaded, you should get a ' .dmg' file. 
+4. Click on the downloaded file, and move the KiCad application into your '*Applications*' folder. 
+5. Click on the KiCad application to start programming! 
+
+## Step 2.2 - Understanding KiCad
 
 Start a new project by doing `File>New>Project` and name it something generic eg. “my_tosat” and make the project type a "Default PCB Project". **Note Remember to click activate workspace and put the project in the cloud icon at the top left.**
 
