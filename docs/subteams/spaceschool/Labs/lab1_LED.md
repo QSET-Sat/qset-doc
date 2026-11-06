@@ -69,9 +69,9 @@ To understand more about the technique for measuring resistance, please see the 
 ![Resistance Table](https://cdn.sparkfun.com/assets/learn_tutorials/6/4/Resistors.png)
 
 # Step 2 - What is an Arduino? 
-An Arduino is a [microcontroller](https://www.youtube.com/watch?v=CqrQmQqpHXc), or a small computer that can perform instructions that we write.\ 
-We can write a program - a series of instructions - that tells this small computer how it should interact with sensors, lights, and various inputs from human users.\ 
-These Arduinos are great as introductory material before we get into more complicated on-board computers for our ToastSat.\ 
+An Arduino is a [microcontroller](https://www.youtube.com/watch?v=CqrQmQqpHXc), or a small computer that can perform instructions that we write.\
+We can write a program - a series of instructions - that tells this small computer how it should interact with sensors, lights, and various inputs from human users.\
+These Arduinos are great as introductory material before we get into more complicated on-board computers for our ToastSat.\
 The basic parts of an Arduino Uno (the board you have today) are outlined below:
 
 ![Tour of the Arduino](https://cdn.shopify.com/s/files/1/0559/1970/6265/files/35_ffab0d1e-5784-44f0-86dd-ca55a2bf5885_2048x2048.png?v=1692267058)
