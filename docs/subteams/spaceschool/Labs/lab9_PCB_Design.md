@@ -20,6 +20,75 @@ Before beginning the lab, please prepare the following equipment:
 
 - one personal laptop with KiCad software installed
 
+## Step 1.1 - What is a PCB?
+
+Before we open KiCad, let's take a look at what we are actually designing.\
+A PCB (printed circuit board) is a flat board that holds electronic components and connects them with thin copper paths instead of loose wires. On a breadboard, jumper wires carry current from one part to the next. On a PCB, those wires are replaced by copper printed directly onto the board, and the components are soldered in place. This makes a PCB much more reliable, because nothing can wiggle loose, and much more compact, because copper paths take up almost no space. A well-designed PCB also has lower electrical noise, since its signal paths are short and fixed. That's why PCBs are inside almost every electronic device, from phones to cars. Even an Arduino is itself a PCB.
+ 
+Some things to note:
+- A breadboard is for testing ideas, and a PCB is for the final version. Most engineers build and test a circuit on a breadboard first, then design the PCB once they know it works.
+- Unlike a breadboard, a PCB can't easily be changed once it's made. Any mistake in the design ends up on every board, so it's important to check your design carefully before sending it off.
+- PCBs are usually green, but the colour is only the coating on top. Boards can also be made in blue, red, black, white, and other colours.
+To see a real PCB, take a look at the Arduino Uno below. Every thin line running between the parts is a copper path on the board.
+ 
+![Basics of PCB](https://i.postimg.cc/8cVPYYz9/pcb-elements.png)
+ 
+## Step 1.2 - What is a PCB made of?
+ 
+A PCB is built like a sandwich of thin layers pressed together. In the middle is the substrate, usually a material called FR-4, which is fiberglass cloth soaked in epoxy resin. It's rigid, strong, and does not conduct electricity, so it holds everything in place and keeps the copper paths separated. On the substrate is a thin layer of copper, which is etched away to leave only the shapes of the circuit. Covering the copper is the solder mask, the coloured coating that gives most PCBs their green look. It protects the copper from corrosion and stops solder from flowing where it shouldn't. On the very top is the silkscreen, the white printed text and outlines that label the board. A simple board has copper on only one side, but most boards, including the one you will design today, have copper on both sides. Complex devices like phones go even further, with 4, 6, or more copper layers stacked inside the board.
+ 
+Some things to note:
+- The standard thickness of a PCB is 1.6 mm, which is about the thickness of a coin.
+- The solder mask covers almost everything, except the pads, which are left bare so components can be soldered to them.
+- In KiCad, each of these layers has its own name. For example, F.Cu and B.Cu are the front and back copper, F.Mask is the front solder mask, and F.Silkscreen is the front silkscreen. You will switch between these layers while designing your board.
+ 
+![PCB Layers](https://i.postimg.cc/T19G4YST/pcb-layers.png)
+ 
+## Step 1.3 - What are Traces?
+ 
+Traces are the copper paths on a PCB that act like wires, carrying current and signals from one component to another. They do the same job as jumper wires on a breadboard. Each trace is a thin, flat strip of copper that runs along the surface of the board between two pads. The width of a trace matters, because a wider trace can carry more current without heating up. That's why traces carrying power are usually drawn wider than traces carrying small signals. Traces on the same copper layer can never cross each other, because touching copper is connected copper. When two paths need to cross, one of them moves to the other side of the board using a via (see Step 1.5).
+ 
+Some things to note:
+- If two traces on the same layer touch, they are shorted together. This is the PCB version of connecting 5V directly to GND, so always keep traces apart.
+- KiCad's default trace width of 0.25 mm is fine for small signals like the one driving an LED. Use wider traces for power and GND, and use KiCad's Calculator Tools to find the right width for a given current.
+- Keep traces as short and direct as possible, and turn corners at 45° instead of sharp 90° angles. This is a common good practice in PCB design.
+ 
+## Step 1.4 - What are Pads?
+ 
+Pads are small areas of bare copper where the legs of a component are soldered to the board. There are two main types. SMD (surface-mount) pads are flat, and the component sits right on top of them. Through-hole pads have a hole drilled through the middle, so the component's leg passes through the board and is soldered on the other side. Common parts like LEDs and resistors often come as through-hole parts, which are strong and easy to solder by hand. SMD parts are much smaller, which is why most of the tiny chips on boards like the Arduino are surface-mount. The group of pads for one component is called its footprint, and it must match the real part's size and leg spacing exactly.
+ 
+Some things to note:
+- If a footprint doesn't match the real part, the part won't fit on the board. Always check the footprint against the part's datasheet before you finish your design.
+- A square pad is often used to mark pin 1 of a component, which helps you place the part the right way round.
+- Through-hole pads are connected on both sides of the board, so a trace can reach them from either the top or the bottom copper layer.
+ 
+## Step 1.5 - What are Vias?
+ 
+A via is a small hole in a PCB that connects a trace on one copper layer to a trace on another. The walls of the hole are coated with copper, so current can flow straight through the board from one side to the other. Since traces on the same layer can't cross, vias let a trace jump to the other side of the board, pass under another trace, and come back up if needed. A via looks a lot like a small through-hole pad, but no component goes into it. It's only there to carry the connection between layers. Vias are what make a 2-layer board so much more flexible than a 1-layer board.
+ 
+Some things to note:
+- Every via takes up space on both sides of the board, so only use as many as you need.
+- Don't place vias too close to pads or other vias. KiCad's Design Rule Check (DRC) will warn you when something is too close.
+- Vias are only needed on boards with 2 or more copper layers.
+ 
+## Step 1.6 - What is Silkscreen?
+ 
+The silkscreen is the layer of printed text and outlines on the surface of a PCB, usually in white. It doesn't carry any electricity. It's only there to help people build, test, and repair the board. Each component is labelled with a reference designator, a short code made of a letter and a number, such as R1 or U1. The letter tells you what type of part it is, and the number tells it apart from others of the same type. The silkscreen also shows the outline of each part, so you can see where it goes and which way it faces. Many boards include the board's name, version number, or a logo printed on the silkscreen too.
+ 
+Some things to note:
+- Common reference letters are R for resistor, C for capacitor, D for diode or LED, U for a chip, and J for a connector.
+- Never place silkscreen text on top of a pad, because the ink can get in the way of soldering.
+- Add your name and the project name to your board. It makes it easy to tell your board apart from everyone else's.
+ 
+## Step 1.7 - What is the Board Outline?
+ 
+The board outline is the line that defines the shape and size of a PCB. When the board is manufactured, it is cut along this line, so anything outside the outline is removed. Most boards are simple rectangles, but the outline can be any shape, such as rounded corners or a custom shape that fits inside a case. Many boards also have mounting holes near the corners, so they can be screwed into place. In KiCad, the board outline is drawn on a special layer called Edge.Cuts, and it's one of the first things you draw when you start laying out a board.
+ 
+Some things to note:
+- The outline must be one fully closed shape. Any gap in the line will cause an error, and the manufacturer won't know where to cut.
+- Keep traces and components a little away from the edge of the board, so they aren't damaged when the board is cut.
+- Smaller boards cost less to make, so try to keep your board as compact as possible.
+
 # Step 2 - What is KiCad
 
 KiCad is a free, open-source software suite for designing electronic circuits and printed circuit boards. It’s an EDA (Electronic Design Automation) tool, so it covers the whole process of turning an idea for a circuit into a board that can be manufactured. KiCad was started in 1992 by Jean-Pierre Charras, a researcher in France. Today it’s developed by a worldwide community of volunteers, with support from CERN and the Linux Foundation. It runs on Windows, macOS, and Linux, and it has no paid tiers, board size limits, or locked features.
@@ -57,19 +126,23 @@ To get started, download the required software from the [KiCad Download Page.](h
 2. Click the box with the GitHub icon under macOS 12 and newer. 
 3. Once downloaded, you should get a ' .dmg' file. 
 4. Click on the downloaded file, and move the KiCad application into your '*Applications*' folder. 
-5. Click on the KiCad application to start programming! 
+5. Click on the KiCad application to start the software! 
 
 ## Step 2.2 - Understanding KiCad
 
-Start a new project by doing `File>New>Project` and name it something generic eg. “my_tosat” and make the project type a "Default PCB Project". **Note Remember to click activate workspace and put the project in the cloud icon at the top left.**
+Start a new project by doing `File>New Project` and name it something generic eg. “Prototype 1”.
 
-![image](https://github.com/HarrisonMKG/space-school-pcb/assets/60119461/bd0ec4f0-a3fb-4c78-ab8a-152adc58d15b)
+### Schematic 
+
+Click on Schematic Editor on KiCad's main page to switch to schematic design. You should be presented with the view as seen below:
+
+![image](https://i.postimg.cc/WzWp417Q/Whats-App-Image-2026-11-06-at-07-01-31.jpg)
 
 
-### Schematic - Searching for Parts 
-In the new project select `File> New> Schematic` for your schematic view. You should be presented with the view as seen below:
 
-![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103165515.png)
+
+
+
 
 ![alt text](https://github.com/HarrisonMKG/space-school-pcb/blob/739b23a0e3657eb07eec198d646021f00f01a6ff/docs/Pasted_image_20231103165208.png)
 Our circuit requires specific ICs in order to work correctly. Due to this, there are specific pin-out and sizing constraints we must follow in order to make sure the theoretical design matches the actual implementation. 
