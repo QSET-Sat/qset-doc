@@ -8,7 +8,6 @@ This is the official documentation for Power Budget Analysis.
   :widths: 20 10 10 10
   :align: left
 
-
    * - System
      - Voltage (V)
      - Current (A)
