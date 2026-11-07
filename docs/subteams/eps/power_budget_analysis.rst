@@ -17,6 +17,8 @@ This is the official documentation for Power Budget Analysis.
      - b
      - c
    * - Comms
-     - d
+     - 6 - 14
      - e
-     - f
+     - 300m - 8
+
+These are not the final values
