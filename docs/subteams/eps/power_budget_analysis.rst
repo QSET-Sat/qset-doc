@@ -5,20 +5,34 @@ This is the official documentation for Power Budget Analysis.
 
 .. list-table::
    :header-rows: 1
-   :widths: 20 10 10 10
+   :widths: 20 20 10 10
    :align: left
 
-   * - System
-     - Voltage (V)
-     - Current (A)
-     - Power (W)
+   * - Subsystem
+     - Nominal Power Consumption (W)
+     - Max Powe (W)
+     - Budgeted Power (W)
    * - EPS
-     - a
-     - b
-     - c
+     - 1
+     - 3
+     - <1
    * - Comms
-     - 6 - 14
-     - e
-     - 300m - 8
-
-These are not the final values
+     - 8
+     - 10
+     - 10
+   * - ADCS
+     - 5
+     - 10
+     - 5
+   * - OBCS
+     - 0.7
+     - 1
+     - 1
+   * - Payload
+     - ~
+     - 16
+     - 16
+   * - Total
+     - >14.7
+     - 40
+     - 33
